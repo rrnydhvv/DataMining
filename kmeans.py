@@ -1,27 +1,27 @@
 # ===========================================================================
-# THUAT TOAN K-MEANS CLUSTERING (PHAN CUM)
+# THUẬT TOÁN K-MEANS CLUSTERING (PHÂN CỤM)
 # ===========================================================================
-# Mo ta:
-#   K-Means la thuat toan PHAN CUM (clustering) - HOC KHONG GIAM SAT
-#   (unsupervised learning), KHONG phai phan loai (classification).
-#   Thuat toan chia du lieu thanh K cum dua tren khoang cach.
+# Mô tả:
+#   K-Means là thuật toán PHÂN CỤM (clustering) - HỌC KHÔNG GIÁM SÁT
+#   (unsupervised learning), KHÔNG phải phân loại (classification).
+#   Thuật toán chia dữ liệu thành K cụm dựa trên khoảng cách.
 #
-# LUU Y QUAN TRONG:
-#   - K-Means lam viec voi DU LIEU SO (numerical data).
-#   - Dataset golf_play la du lieu PHAN LOAI (categorical).
-#   - De ap dung K-Means, ta can MA HOA du lieu categorical => so (encoding).
-#   - Day la vi du minh hoa, trong thuc te K-Means khong phai lua chon
-#     tot nhat cho du lieu hoan toan categorical.
+# LƯU Ý QUAN TRỌNG:
+#   - K-Means làm việc với DỮ LIỆU SỐ (numerical data).
+#   - Dataset golf_play là dữ liệu PHÂN LOẠI (categorical).
+#   - Để áp dụng K-Means, ta cần MÃ HÓA dữ liệu categorical => số (encoding).
+#   - Đây là ví dụ minh họa, trong thực tế K-Means không phải lựa chọn
+#     tốt nhất cho dữ liệu hoàn toàn categorical.
 #
-# Cong thuc khoang cach Euclid:
+# Công thức khoảng cách Euclid:
 #   d(x, y) = sqrt( sum( (xi - yi)^2 ) )
 #
-# Quy trinh K-Means:
-#   Buoc 1: Chon K tam cum ban dau (centroids)
-#   Buoc 2: Gan moi diem du lieu vao cum co tam gan nhat
-#   Buoc 3: Cap nhat tam cum = trung binh cac diem trong cum
-#   Buoc 4: Lap lai Buoc 2-3 cho den khi hoi tu
-#            (cac cum khong thay doi hoac dat so vong lap toi da)
+# Quy trình K-Means:
+#   Bước 1: Chọn K tâm cụm ban đầu (centroids)
+#   Bước 2: Gán mỗi điểm dữ liệu vào cụm có tâm gần nhất
+#   Bước 3: Cập nhật tâm cụm = trung bình các điểm trong cụm
+#   Bước 4: Lặp lại Bước 2-3 cho đến khi hội tụ
+#            (các cụm không thay đổi hoặc đạt số vòng lặp tối đa)
 # ===========================================================================
 
 import csv

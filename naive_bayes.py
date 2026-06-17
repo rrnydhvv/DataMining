@@ -1,28 +1,28 @@
 # ===========================================================================
-# THUAT TOAN NAIVE BAYES - PHAN LOAI (Classification)
+# THUẬT TOÁN NAIVE BAYES - PHÂN LOẠI (Classification)
 # ===========================================================================
-# Mo ta:
-#   Naive Bayes dua tren dinh ly Bayes voi gia dinh "ngay tho" (naive) rang
-#   cac thuoc tinh doc lap voi nhau khi biet nhan lop.
+# Mô tả:
+#   Naive Bayes dựa trên định lý Bayes với giả định "ngây thơ" (naive) rằng
+#   các thuộc tính độc lập với nhau khi biết nhãn lớp.
 #
-# Cong thuc Bayes:
+# Công thức Bayes:
 #   P(C|X) = P(X|C) * P(C) / P(X)
 #
-#   Trong do:
-#     - C: lop can du doan (Play = yes / no)
-#     - X: vector dac trung (Outlook, Temperature, Humidity, Windy)
-#     - P(C): xac suat tien nghiem (prior) cua lop C
-#     - P(X|C): xac suat co dieu kien (likelihood) cua X khi biet C
-#     - P(X): xac suat chung cua X (hang so, khong can tinh khi so sanh)
+#   Trong đó:
+#     - C: lớp cần dự đoán (Play = yes / no)
+#     - X: vector đặc trưng (Outlook, Temperature, Humidity, Windy)
+#     - P(C): xác suất tiên nghiệm (prior) của lớp C
+#     - P(X|C): xác suất có điều kiện (likelihood) của X khi biết C
+#     - P(X): xác suất chung của X (hằng số, không cần tính khi so sánh)
 #
-# Gia dinh Naive (doc lap co dieu kien):
+# Giả định Naive (độc lập có điều kiện):
 #   P(X|C) = P(x1|C) * P(x2|C) * ... * P(xn|C)
 #
-# Quy trinh:
-#   Buoc 1: Tinh xac suat tien nghiem P(C) cho tung lop
-#   Buoc 2: Tinh xac suat co dieu kien P(xi|C) cho tung thuoc tinh
-#   Buoc 3: Voi mau can phan loai, tinh P(C|X) cho tung lop
-#   Buoc 4: Chon lop co P(C|X) lon nhat
+# Quy trình:
+#   Bước 1: Tính xác suất tiên nghiệm P(C) cho từng lớp
+#   Bước 2: Tính xác suất có điều kiện P(xi|C) cho từng thuộc tính
+#   Bước 3: Với mẫu cần phân loại, tính P(C|X) cho từng lớp
+#   Bước 4: Chọn lớp có P(C|X) lớn nhất
 # ===========================================================================
 
 import csv

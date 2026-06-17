@@ -1,34 +1,34 @@
 # ===========================================================================
-# THUAT TOAN DECISION TREE (CAY QUYET DINH) - PHUONG PHAP ID3
+# THUẬT TOÁN DECISION TREE (CÂY QUYẾT ĐỊNH) - PHƯƠNG PHÁP ID3
 # ===========================================================================
-# Mo ta:
-#   Cay quyet dinh xay dung cay phan loai bang cach chon thuoc tinh tot nhat
-#   de chia du lieu tai moi nut. Thuoc tinh tot nhat la thuoc tinh co
-#   Information Gain (do loi thong tin) lon nhat.
+# Mô tả:
+#   Cây quyết định xây dựng cây phân loại bằng cách chọn thuộc tính tốt nhất
+#   để chia dữ liệu tại mỗi nút. Thuộc tính tốt nhất là thuộc tính có
+#   Information Gain (độ lợi thông tin) lớn nhất.
 #
-# Cac khai niem chinh:
+# Các khái niệm chính:
 #
-#   1. ENTROPY (Do bat dinh / Do hon loan):
+#   1. ENTROPY (Độ bất định / Độ hỗn loạn):
 #      Entropy(S) = - sum( p_i * log2(p_i) )
-#      Trong do p_i la xac suat cua lop thu i trong tap S
-#      - Entropy = 0: tap du lieu thuan nhat (chi co 1 lop)
-#      - Entropy = 1: tap du lieu hon loan nhat (cac lop can bang)
+#      Trong đó p_i là xác suất của lớp thứ i trong tập S
+#      - Entropy = 0: tập dữ liệu thuần nhất (chỉ có 1 lớp)
+#      - Entropy = 1: tập dữ liệu hỗn loạn nhất (các lớp cân bằng)
 #
-#   2. INFORMATION GAIN (Do loi thong tin):
+#   2. INFORMATION GAIN (Độ lợi thông tin):
 #      Gain(S, A) = Entropy(S) - sum( |Sv|/|S| * Entropy(Sv) )
-#      Trong do:
-#        - A: thuoc tinh dang xet
-#        - Sv: tap con cua S ung voi gia tri v cua thuoc tinh A
-#        - |Sv|/|S|: trong so (ty le mau)
-#      => Chon thuoc tinh A co Gain lon nhat de chia
+#      Trong đó:
+#        - A: thuộc tính đang xét
+#        - Sv: tập con của S ứng với giá trị v của thuộc tính A
+#        - |Sv|/|S|: trọng số (tỷ lệ mẫu)
+#      => Chọn thuộc tính A có Gain lớn nhất để chia
 #
-# Quy trinh xay dung cay (thuat toan ID3):
-#   Buoc 1: Tinh Entropy cua toan bo tap du lieu
-#   Buoc 2: Tinh Information Gain cho tung thuoc tinh
-#   Buoc 3: Chon thuoc tinh co Gain lon nhat lam nut goc
-#   Buoc 4: Chia du lieu theo cac gia tri cua thuoc tinh da chon
-#   Buoc 5: Lap lai Buoc 1-4 cho tung nhanh (de quy)
-#   Dieu kien dung: Entropy = 0 (nut la) hoac het thuoc tinh
+# Quy trình xây dựng cây (thuật toán ID3):
+#   Bước 1: Tính Entropy của toàn bộ tập dữ liệu
+#   Bước 2: Tính Information Gain cho từng thuộc tính
+#   Bước 3: Chọn thuộc tính có Gain lớn nhất làm nút gốc
+#   Bước 4: Chia dữ liệu theo các giá trị của thuộc tính đã chọn
+#   Bước 5: Lặp lại Bước 1-4 cho từng nhánh (đệ quy)
+#   Điều kiện dừng: Entropy = 0 (nút lá) hoặc hết thuộc tính
 # ===========================================================================
 
 import csv
@@ -377,3 +377,10 @@ if __name__ == "__main__":
     ket_qua = du_doan(cay, mau_moi, tieu_de)
     print(f"\n  => KET QUA: Play = {ket_qua.upper()}")
     print("=" * 70)
+    
+    # Thêm mẫu được dự đoán vào lại file csv gốc
+    # with open(duong_dan, mode='a', encoding='utf-8', newline='') as f:
+    #     writer = csv.writer(f)
+    #     dong_moi = [mau_moi.get(ten, "") for ten in tieu_de[:-1]] + [ket_qua]
+    #     writer.writerow(dong_moi)
+    
