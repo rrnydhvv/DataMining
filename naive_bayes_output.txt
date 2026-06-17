@@ -1,0 +1,104 @@
+======================================================================
+  THUAT TOAN NAIVE BAYES - PHAN LOAI CHOI GOLF
+======================================================================
+
+[BANG DU LIEU]
+-------------------------------------------------------
+STT    Outlook      Temperature    Humidity   Windy    Play  
+-------------------------------------------------------
+1      sunny        hot            high       false    no    
+2      sunny        hot            high       true     no    
+3      overcast     hot            high       false    yes   
+4      rainy        mild           high       false    yes   
+5      rainy        cool           normal     false    yes   
+6      rainy        cool           normal     true     no    
+7      overcast     cool           normal     true     yes   
+8      sunny        mild           high       false    no    
+9      sunny        cool           normal     false    yes   
+10     rainy        mild           normal     false    yes   
+11     sunny        mild           normal     true     yes   
+12     overcast     mild           high       true     yes   
+13     overcast     hot            normal     false    yes   
+14     rainy        mild           high       true     no    
+-------------------------------------------------------
+Tong so mau: 14
+
+======================================================================
+[BUOC 1] XAC SUAT TIEN NGHIEM P(Play)
+----------------------------------------
+  P(Play=no ) = 5/14 = 0.3571
+  P(Play=yes) = 9/14 = 0.6429
+
+======================================================================
+[BUOC 2] XAC SUAT CO DIEU KIEN P(Xi | Play)
+-------------------------------------------------------
+
+  Thuoc tinh: Outlook
+  ....         Play=yes          Play=no
+  overcast           4/9 = 0.4444     0/5 = 0.0000
+  rainy              3/9 = 0.3333     2/5 = 0.4000
+  sunny              2/9 = 0.2222     3/5 = 0.6000
+
+  Thuoc tinh: Temperature
+  ....         Play=yes          Play=no
+  cool               3/9 = 0.3333     1/5 = 0.2000
+  hot                2/9 = 0.2222     2/5 = 0.4000
+  mild               4/9 = 0.4444     2/5 = 0.4000
+
+  Thuoc tinh: Humidity
+  ....         Play=yes          Play=no
+  high               3/9 = 0.3333     4/5 = 0.8000
+  normal             6/9 = 0.6667     1/5 = 0.2000
+
+  Thuoc tinh: Windy
+  ....         Play=yes          Play=no
+  false              6/9 = 0.6667     2/5 = 0.4000
+  true               3/9 = 0.3333     3/5 = 0.6000
+
+======================================================================
+[BUOC 3] DU DOAN MAU MOI
+----------------------------------------
+  Mau can phan loai:
+    Outlook = sunny
+    Temperature = cool
+    Humidity = high
+    Windy = true
+
+  Tinh P(Play|X) cho tung lop:
+-------------------------------------------------------
+
+  --- Play = no ---
+  P(Play=no) = 0.3571
+  P(Outlook=sunny | Play=no) = 0.6000
+  P(Temperature=cool | Play=no) = 0.2000
+  P(Humidity=high | Play=no) = 0.8000
+  P(Windy=true | Play=no) = 0.6000
+
+  P(Play=no|X) = P(Play=no) x P(Outlook|no) x P(Temperature|no) x P(Humidity|no) x P(Windy|no)
+  = 0.3571 x 0.6000 x 0.2000 x 0.8000 x 0.6000
+  = 0.020571
+
+  --- Play = yes ---
+  P(Play=yes) = 0.6429
+  P(Outlook=sunny | Play=yes) = 0.2222
+  P(Temperature=cool | Play=yes) = 0.3333
+  P(Humidity=high | Play=yes) = 0.3333
+  P(Windy=true | Play=yes) = 0.3333
+
+  P(Play=yes|X) = P(Play=yes) x P(Outlook|yes) x P(Temperature|yes) x P(Humidity|yes) x P(Windy|yes)
+  = 0.6429 x 0.2222 x 0.3333 x 0.3333 x 0.3333
+  = 0.005291
+
+======================================================================
+[BUOC 4] KET LUAN
+----------------------------------------
+  P(Play=no  | X) = 0.020571 (*)
+  P(Play=yes | X) = 0.005291
+
+  Chuan hoa xac suat (chia cho tong = 0.025862):
+  P(Play=no  | X) = 79.54%
+  P(Play=yes | X) = 20.46%
+
+  => KET QUA: Play = NO
+     (Chon lop co xac suat hau nghiem lon nhat)
+======================================================================

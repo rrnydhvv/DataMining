@@ -1,0 +1,116 @@
+======================================================================
+  THUAT TOAN DECISION TREE (ID3) - PHAN LOAI CHOI GOLF
+======================================================================
+
+[BANG DU LIEU]
+-------------------------------------------------------
+STT    Outlook      Temperature    Humidity   Windy    Play  
+-------------------------------------------------------
+1      sunny        hot            high       false    no    
+2      sunny        hot            high       true     no    
+3      overcast     hot            high       false    yes   
+4      rainy        mild           high       false    yes   
+5      rainy        cool           normal     false    yes   
+6      rainy        cool           normal     true     no    
+7      overcast     cool           normal     true     yes   
+8      sunny        mild           high       false    no    
+9      sunny        cool           normal     false    yes   
+10     rainy        mild           normal     false    yes   
+11     sunny        mild           normal     true     yes   
+12     overcast     mild           high       true     yes   
+13     overcast     hot            normal     false    yes   
+14     rainy        mild           high       true     no    
+-------------------------------------------------------
+Tong so mau: 14
+
+======================================================================
+[BUOC 1] ENTROPY CUA TOAN BO TAP DU LIEU
+-------------------------------------------------------
+  Tong mau: 14
+  Play=no: 5 mau (p = 5/14 = 0.3571)
+  Play=yes: 9 mau (p = 9/14 = 0.6429)
+  Entropy(S) = -(5/14)*log2(5/14) + -(9/14)*log2(9/14)
+  Entropy(S) = 0.9403
+
+======================================================================
+[BUOC 2] INFORMATION GAIN CHO TUNG THUOC TINH
+-------------------------------------------------------
+
+  --- Thuoc tinh: Outlook ---
+  Outlook=sunny: 5 mau (no=3, yes=2)
+    Entropy(sunny) = 0.9710
+  Outlook=overcast: 4 mau (yes=4)
+    Entropy(overcast) = 0.0000
+  Outlook=rainy: 5 mau (yes=3, no=2)
+    Entropy(rainy) = 0.9710
+
+  Gain(Outlook) = Entropy(S) - [(5/14)*0.9710 + (4/14)*0.0000 + (5/14)*0.9710]
+  Gain(Outlook) = 0.9403 - 0.6935 = 0.2467
+
+  --- Thuoc tinh: Temperature ---
+  Temperature=hot: 4 mau (no=2, yes=2)
+    Entropy(hot) = 1.0000
+  Temperature=mild: 6 mau (yes=4, no=2)
+    Entropy(mild) = 0.9183
+  Temperature=cool: 4 mau (yes=3, no=1)
+    Entropy(cool) = 0.8113
+
+  Gain(Temperature) = Entropy(S) - [(4/14)*1.0000 + (6/14)*0.9183 + (4/14)*0.8113]
+  Gain(Temperature) = 0.9403 - 0.9111 = 0.0292
+
+  --- Thuoc tinh: Humidity ---
+  Humidity=high: 7 mau (no=4, yes=3)
+    Entropy(high) = 0.9852
+  Humidity=normal: 7 mau (yes=6, no=1)
+    Entropy(normal) = 0.5917
+
+  Gain(Humidity) = Entropy(S) - [(7/14)*0.9852 + (7/14)*0.5917]
+  Gain(Humidity) = 0.9403 - 0.7885 = 0.1518
+
+  --- Thuoc tinh: Windy ---
+  Windy=false: 8 mau (no=2, yes=6)
+    Entropy(false) = 0.8113
+  Windy=true: 6 mau (no=3, yes=3)
+    Entropy(true) = 1.0000
+
+  Gain(Windy) = Entropy(S) - [(8/14)*0.8113 + (6/14)*1.0000]
+  Gain(Windy) = 0.9403 - 0.8922 = 0.0481
+
+======================================================================
+[BUOC 3] SO SANH INFORMATION GAIN
+----------------------------------------
+  Gain(Outlook       ) = 0.2467 <<< MAX
+  Gain(Temperature   ) = 0.0292
+  Gain(Humidity      ) = 0.1518
+  Gain(Windy         ) = 0.0481
+
+  => Chon thuoc tinh 'Outlook' lam nut goc (Gain lon nhat)
+
+======================================================================
+[BUOC 4] XAY DUNG CAY QUYET DINH (DE QUY)
+----------------------------------------
+
+  Nut goc: [Outlook]
+  |-- [Outlook = sunny]
+  |   |-- [Humidity = high] => [NO]
+  |   `-- [Humidity = normal] => [YES]
+  |-- [Outlook = overcast] => [YES]
+  `-- [Outlook = rainy]
+      |-- [Windy = false] => [YES]
+      `-- [Windy = true] => [NO]
+
+======================================================================
+[BUOC 5] DU DOAN MAU MOI
+----------------------------------------
+  Mau can phan loai:
+    Outlook = sunny
+    Temperature = cool
+    Humidity = high
+    Windy = true
+
+  Qua trinh duyet cay:
+    Buoc 1: Outlook = sunny --> di theo nhanh 'sunny'
+    Buoc 2: Humidity = high --> di theo nhanh 'high'
+
+  => KET QUA: Play = NO
+======================================================================
