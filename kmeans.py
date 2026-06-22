@@ -32,13 +32,14 @@ def create_ohe_encoding_table(data: List[List[str]], cols: List[int]) -> Tuple[D
     ohe_col_names: List[str] = []
 
     for col in cols:
+        #tìm các giá trị duy nhất trong cột
         unique_values: List[str] = []
         for row in data:
             if row[col] not in unique_values:
                 unique_values.append(row[col])
-        unique_values.sort()
+        unique_values.sort() #sắp xếp các giá trị duy nhất để đảm bảo thứ tự mã hóa ổn định
 
-        num_values = len(unique_values)
+        num_values = len(unique_values) #đếm số giá trị
         encoding_table[col] = {}
         
         for i, value in enumerate(unique_values):
@@ -59,7 +60,7 @@ def encode_data_ohe(data: List[List[str]], encoding_table: Dict[int, Dict[str, L
         vector: List[float] = []
         for col in cols:
             value = row[col]
-            vector.extend(float(v) for v in encoding_table[col][value])
+            vector.extend(float(v) for v in encoding_table[col][value]) #tra cứu vector mã hóa và thêm vào vector dữ liệu
         numeric_data.append(vector)
     return numeric_data
 
@@ -88,8 +89,8 @@ def initialize_centroids(numeric_data: List[List[float]], k: int) -> List[List[f
 
 def assign_clusters(numeric_data: List[List[float]], centroids: List[List[float]]) -> List[int]:
     """Gán mỗi điểm dữ liệu vào cụm có tâm cụm gần nhất."""
-    cluster_assignments: List[int] = []
-    for point in numeric_data:
+    cluster_assignments: List[int] = [] #chứa chỉ số cụm của mỗi điểm dữ liệu
+    for point in numeric_data: #duyệt qua từng điểm dữ liệu
         min_dist: float = float('inf')
         closest_cluster: int = 0
 
@@ -106,9 +107,11 @@ def assign_clusters(numeric_data: List[List[float]], centroids: List[List[float]
 def update_centroids(numeric_data: List[List[float]], cluster_assignments: List[int], k: int, num_dims: int) -> List[List[float]]:
     """Tính tâm cụm mới = trung bình các điểm trong mỗi cụm."""
     new_centroids: List[List[float]] = []
-    for j in range(k):
+    for j in range(k): #duyệt qua từng cụm
+        #danh sách các điểm thuộc cụm j
         cluster_points = [numeric_data[i] for i in range(len(numeric_data)) if cluster_assignments[i] == j]
 
+        #khi 1 cụm không có điểm nào, đặt tâm cụm mới là vector 0 để tránh lỗi chia cho 0
         if len(cluster_points) == 0:
             new_centroids.append([0.0] * num_dims)
         else:
