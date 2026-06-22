@@ -282,7 +282,7 @@ def kmeans(du_lieu_so, k, so_vong_toi_da=20):
 # ===========================================================================
 # PHAN CHINH: CHAY CHUONG TRINH
 # ===========================================================================
-if __name__ == "__main__":
+def main():
     print("=" * 70)
     print("  THUAT TOAN K-MEANS CLUSTERING - PHAN CUM DU LIEU GOLF")
     print("=" * 70)
@@ -454,3 +454,6 @@ if __name__ == "__main__":
     print("  phu hop hon Label Encoding cho K-Means.")
     print("  Tuy nhien, so chieu tang len (4 thuoc tinh => " + str(so_chieu) + " chieu).")
     print("=" * 70)
+
+if __name__ == "__main__":
+    main()

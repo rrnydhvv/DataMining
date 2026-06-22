@@ -255,7 +255,7 @@ def du_doan(cay, mau, tieu_de):
 # ===========================================================================
 # PHAN CHINH: CHAY CHUONG TRINH
 # ===========================================================================
-if __name__ == "__main__":
+def main():
     print("=" * 70)
     print("  THUAT TOAN DECISION TREE (ID3) - PHAN LOAI CHOI GOLF")
     print("=" * 70)
@@ -383,4 +383,6 @@ if __name__ == "__main__":
     #     writer = csv.writer(f)
     #     dong_moi = [mau_moi.get(ten, "") for ten in tieu_de[:-1]] + [ket_qua]
     #     writer.writerow(dong_moi)
+if __name__ == "__main__":
+    main()
     

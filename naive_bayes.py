@@ -187,7 +187,7 @@ def du_doan(mau_moi, du_lieu, tieu_de, cot_nhan):
 # ===========================================================================
 # PHAN CHINH: CHAY CHUONG TRINH
 # ===========================================================================
-if __name__ == "__main__":
+def main():
     print("=" * 70)
     print("  THUAT TOAN NAIVE BAYES - PHAN LOAI CHOI GOLF")
     print("=" * 70)
@@ -308,3 +308,6 @@ if __name__ == "__main__":
     print(f"\n  => KET QUA: Play = {lop_du_doan.upper()}")
     print(f"     (Chon lop co xac suat hau nghiem lon nhat)")
     print("=" * 70)
+
+if __name__ == "__main__":
+    main()
