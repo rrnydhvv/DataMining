@@ -28,12 +28,15 @@ def read_data(file_path: str) -> Tuple[List[str], List[List[str]]]:
 # ---------------------------------------------------------------------------
 def calculate_entropy(data: List[List[str]], label_col: int) -> float:
     """Tính Entropy của tập dữ liệu dựa trên cột nhãn."""
+    #đếm số lượng mẫu
     total: int = len(data)
     if total == 0:
         return 0.0
 
+    #khởi tại biến đểm số lượng từng lớp
     class_counts: Dict[str, int] = {}
     for row in data:
+        #lấy nhãn của mẫu
         label = row[label_col]
         class_counts[label] = class_counts.get(label, 0) + 1
 
@@ -51,9 +54,14 @@ def calculate_entropy(data: List[List[str]], label_col: int) -> float:
 # ---------------------------------------------------------------------------
 def calculate_information_gain(data: List[List[str]], feature_col: int, label_col: int) -> Tuple[float, Dict[str, Any], float]:
     """Tính Information Gain khi chia dữ liệu theo feature_col."""
+
+    #đếm tổng số mẫu
     total: int = len(data)
+
+    #tính entropy gốc của tập dữ liệu
     base_entropy: float = calculate_entropy(data, label_col)
 
+    #tạo dict chứa các tập con
     subsets: Dict[str, List[List[str]]] = {}
     for row in data:
         value = row[feature_col]
@@ -63,13 +71,14 @@ def calculate_information_gain(data: List[List[str]], feature_col: int, label_co
 
     subset_entropy: float = 0.0
     subset_details: Dict[str, Any] = {}
-    for value, subset in subsets.items():
+    for value, subset in subsets.items(): #trả về giá trị và tập con tương ứng
         weight: float = len(subset) / total
-        entropy_val: float = calculate_entropy(subset, label_col)
+        entropy_val: float = calculate_entropy(subset, label_col) #tính entropy của tập con
         subset_entropy += weight * entropy_val
 
+        #khởi tạo bộ đếm lớp
         counts: Dict[str, int] = {}
-        for row in subset:
+        for row in subset: #đếm số lượng từng nhãn
             n = row[label_col]
             counts[n] = counts.get(n, 0) + 1
         subset_details[value] = {
@@ -91,7 +100,7 @@ def build_tree(data: List[List[str]], header: List[str], remaining_cols: List[in
     if len(data) == 0:
         return None
 
-    unique_labels = set(row[label_col] for row in data)
+    unique_labels = set(row[label_col] for row in data) #lấy tất cả các nhãn duy nhất trong tập dữ liệu
     if len(unique_labels) == 1:
         return list(unique_labels)[0]
 
@@ -106,21 +115,22 @@ def build_tree(data: List[List[str]], header: List[str], remaining_cols: List[in
     best_col: int = -1
 
     for col in remaining_cols:
-        gain, _, _ = calculate_information_gain(data, col, label_col)
+        gain, _, _ = calculate_information_gain(data, col, label_col) #tính gain cho từng cột còn lại
         if gain > best_gain:
             best_gain = gain
             best_col = col
 
     feature_name = header[best_col]
-    subsets: Dict[str, List[List[str]]] = {}
+    subsets: Dict[str, List[List[str]]] = {} #tạo dict chứa các tập con sau khi chia theo cột tốt nhất
     for row in data:
         value = row[best_col]
         if value not in subsets:
             subsets[value] = []
         subsets[value].append(row)
 
-    new_cols = [c for c in remaining_cols if c != best_col]
+    new_cols = [c for c in remaining_cols if c != best_col] #loại bỏ cột đã chọn khỏi danh sách cột còn lại
     branches: Dict[str, Any] = {}
+    #duyệt qua các nhánh của cột tốt nhất và xây dựng cây con cho mỗi nhánh
     for value, subset in subsets.items():
         branches[value] = build_tree(subset, header, new_cols, label_col, depth + 1)
 
