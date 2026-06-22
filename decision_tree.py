@@ -37,20 +37,20 @@ import math
 # ---------------------------------------------------------------------------
 # BUOC 0: Doc du lieu tu file CSV
 # ---------------------------------------------------------------------------
-def doc_du_lieu(duong_dan):
+def read_data(file_path):
     """
-    Doc file CSV va tra ve tieu_de (header) va du_lieu (list cac dong).
+    Doc file CSV va tra ve header (tieu_de) va data (list cac dong).
     """
-    du_lieu = []
-    tieu_de = []
-    with open(duong_dan, mode='r', encoding='utf-8') as f:
+    data = []
+    header = []
+    with open(file_path, mode='r', encoding='utf-8') as f:
         reader = csv.reader(f)
-        tieu_de = next(reader)
-        for dong in reader:
-            if len(dong) > 0:
-                dong_sach = [gia_tri.strip().lower() for gia_tri in dong]
-                du_lieu.append(dong_sach)
-    return tieu_de, du_lieu
+        header = next(reader)
+        for row in reader:
+            if len(row) > 0:
+                clean_row = [value.strip().lower() for value in row]
+                data.append(clean_row)
+    return header, data
 
 
 # ---------------------------------------------------------------------------
@@ -61,27 +61,27 @@ def doc_du_lieu(duong_dan):
 #   p_yes = 9/14, p_no = 5/14
 #   Entropy = -(9/14)*log2(9/14) - (5/14)*log2(5/14) = 0.9403
 # ---------------------------------------------------------------------------
-def tinh_entropy(du_lieu, cot_nhan):
+def calculate_entropy(data, label_col):
     """
     Tinh Entropy cua tap du lieu dua tren cot nhan (lop).
     Entropy do muc do hon loan / bat dinh cua du lieu.
     """
-    tong = len(du_lieu)
-    if tong == 0:
+    total = len(data)
+    if total == 0:
         return 0
 
     # Dem so luong tung lop
-    dem_lop = {}
-    for dong in du_lieu:
-        nhan = dong[cot_nhan]
-        if nhan not in dem_lop:
-            dem_lop[nhan] = 0
-        dem_lop[nhan] += 1
+    class_counts = {}
+    for row in data:
+        label = row[label_col]
+        if label not in class_counts:
+            class_counts[label] = 0
+        class_counts[label] += 1
 
     # Ap dung cong thuc Entropy
     entropy = 0
-    for lop, so_luong in dem_lop.items():
-        p = so_luong / tong           # Xac suat cua lop
+    for label, count in class_counts.items():
+        p = count / total           # Xac suat cua lop
         if p > 0:
             entropy -= p * math.log2(p)  # -p * log2(p)
 
@@ -96,52 +96,52 @@ def tinh_entropy(du_lieu, cot_nhan):
 # Y nghia: Gain do muc do giam Entropy (giam bat dinh) khi chia theo A
 # Gain cang lon => thuoc tinh A cang tot de phan loai
 # ---------------------------------------------------------------------------
-def tinh_information_gain(du_lieu, cot_thuoc_tinh, cot_nhan):
+def calculate_information_gain(data, feature_col, label_col):
     """
-    Tinh Information Gain khi chia du lieu theo cot_thuoc_tinh.
+    Tinh Information Gain khi chia du lieu theo cot_thuoc_tinh (feature_col).
     Tra ve: gia tri Gain, dict cac tap con (de in chi tiet)
     """
-    tong = len(du_lieu)
-    entropy_goc = tinh_entropy(du_lieu, cot_nhan)
+    total = len(data)
+    base_entropy = calculate_entropy(data, label_col)
 
     # Chia du lieu thanh cac tap con theo gia tri cua thuoc tinh
-    tap_con = {}  # {gia_tri: [cac dong thuoc gia tri do]}
-    for dong in du_lieu:
-        gia_tri = dong[cot_thuoc_tinh]
-        if gia_tri not in tap_con:
-            tap_con[gia_tri] = []
-        tap_con[gia_tri].append(dong)
+    subsets = {}  # {gia_tri: [cac dong thuoc gia tri do]}
+    for row in data:
+        value = row[feature_col]
+        if value not in subsets:
+            subsets[value] = []
+        subsets[value].append(row)
 
     # Tinh Entropy trung binh co trong so cua cac tap con
-    entropy_con = 0
-    chi_tiet_con = {}  # Luu chi tiet de in
-    for gia_tri, tap in tap_con.items():
-        trong_so = len(tap) / tong                    # |Sv| / |S|
-        entropy_v = tinh_entropy(tap, cot_nhan)       # Entropy(Sv)
-        entropy_con += trong_so * entropy_v           # Cong don
+    subset_entropy = 0
+    subset_details = {}  # Luu chi tiet de in
+    for value, subset in subsets.items():
+        weight = len(subset) / total                    # |Sv| / |S|
+        entropy_val = calculate_entropy(subset, label_col)       # Entropy(Sv)
+        subset_entropy += weight * entropy_val           # Cong don
 
         # Luu chi tiet
-        dem = {}
-        for dong in tap:
-            n = dong[cot_nhan]
-            dem[n] = dem.get(n, 0) + 1
-        chi_tiet_con[gia_tri] = {
-            'so_mau': len(tap),
-            'entropy': entropy_v,
-            'trong_so': trong_so,
-            'dem_lop': dem
+        counts = {}
+        for row in subset:
+            n = row[label_col]
+            counts[n] = counts.get(n, 0) + 1
+        subset_details[value] = {
+            'so_mau': len(subset),
+            'entropy': entropy_val,
+            'trong_so': weight,
+            'dem_lop': counts
         }
 
     # Gain = Entropy(goc) - Entropy trung binh cac tap con
-    gain = entropy_goc - entropy_con
+    gain = base_entropy - subset_entropy
 
-    return gain, chi_tiet_con, entropy_goc
+    return gain, subset_details, base_entropy
 
 
 # ---------------------------------------------------------------------------
 # XAY DUNG CAY QUYET DINH (DE QUY)
 # ---------------------------------------------------------------------------
-def xay_dung_cay(du_lieu, tieu_de, cac_cot_con_lai, cot_nhan, do_sau=0):
+def build_tree(data, header, remaining_cols, label_col, depth=0):
     """
     Xay dung cay quyet dinh bang thuat toan ID3 (de quy).
     Tra ve: dict bieu dien cay
@@ -151,101 +151,101 @@ def xay_dung_cay(du_lieu, tieu_de, cac_cot_con_lai, cot_nhan, do_sau=0):
     # --- Dieu kien dung de quy ---
 
     # Truong hop 1: Tat ca mau cung 1 lop => tra ve nhan do (nut la)
-    cac_nhan = set(dong[cot_nhan] for dong in du_lieu)
-    if len(cac_nhan) == 1:
-        return list(cac_nhan)[0]
+    unique_labels = set(row[label_col] for row in data)
+    if len(unique_labels) == 1:
+        return list(unique_labels)[0]
 
     # Truong hop 2: Het thuoc tinh de chia => tra ve lop da so (majority vote)
-    if len(cac_cot_con_lai) == 0:
-        dem = {}
-        for dong in du_lieu:
-            n = dong[cot_nhan]
-            dem[n] = dem.get(n, 0) + 1
-        return max(dem, key=dem.get)
+    if len(remaining_cols) == 0:
+        counts = {}
+        for row in data:
+            n = row[label_col]
+            counts[n] = counts.get(n, 0) + 1
+        return max(counts, key=counts.get)
 
     # Truong hop 3: Khong con du lieu => tra ve None
-    if len(du_lieu) == 0:
+    if len(data) == 0:
         return None
 
     # --- Tim thuoc tinh co Information Gain lon nhat ---
-    gain_tot_nhat = -1
-    cot_tot_nhat = -1
+    best_gain = -1
+    best_col = -1
 
-    for cot in cac_cot_con_lai:
-        gain, _, _ = tinh_information_gain(du_lieu, cot, cot_nhan)
-        if gain > gain_tot_nhat:
-            gain_tot_nhat = gain
-            cot_tot_nhat = cot
+    for col in remaining_cols:
+        gain, _, _ = calculate_information_gain(data, col, label_col)
+        if gain > best_gain:
+            best_gain = gain
+            best_col = col
 
     # Tao nut cay voi thuoc tinh tot nhat
-    ten_thuoc_tinh = tieu_de[cot_tot_nhat]
+    feature_name = header[best_col]
 
     # Chia du lieu theo gia tri cua thuoc tinh tot nhat
-    tap_con = {}
-    for dong in du_lieu:
-        gia_tri = dong[cot_tot_nhat]
-        if gia_tri not in tap_con:
-            tap_con[gia_tri] = []
-        tap_con[gia_tri].append(dong)
+    subsets = {}
+    for row in data:
+        value = row[best_col]
+        if value not in subsets:
+            subsets[value] = []
+        subsets[value].append(row)
 
     # Tao cac nhanh con (de quy)
-    cac_cot_moi = [c for c in cac_cot_con_lai if c != cot_tot_nhat]
-    nhanh = {}
-    for gia_tri, tap in tap_con.items():
-        nhanh[gia_tri] = xay_dung_cay(tap, tieu_de, cac_cot_moi, cot_nhan, do_sau + 1)
+    new_cols = [c for c in remaining_cols if c != best_col]
+    branches = {}
+    for value, subset in subsets.items():
+        branches[value] = build_tree(subset, header, new_cols, label_col, depth + 1)
 
     return {
-        'thuoc_tinh': ten_thuoc_tinh,
-        'cot': cot_tot_nhat,
-        'nhanh': nhanh
+        'thuoc_tinh': feature_name,
+        'cot': best_col,
+        'nhanh': branches
     }
 
 
 # ---------------------------------------------------------------------------
 # IN CAY QUYET DINH (TRUC QUAN HOA TREN TERMINAL)
 # ---------------------------------------------------------------------------
-def in_cay(cay, tien_to="", la_cuoi=True):
+def print_tree(tree, prefix="", is_last=True):
     """
     In cay quyet dinh theo dang cay thu muc (tree view) tren terminal.
     """
-    if isinstance(cay, str):
+    if isinstance(tree, str):
         # Nut la: in nhan lop
-        print(f"=> [{cay.upper()}]")
+        print(f"=> [{tree.upper()}]")
         return
 
-    ten_tt = cay['thuoc_tinh']
-    cac_nhanh = list(cay['nhanh'].items())
+    feature_name = tree['thuoc_tinh']
+    branches_list = list(tree['nhanh'].items())
 
-    for i, (gia_tri, cay_con) in enumerate(cac_nhanh):
-        la_nhanh_cuoi = (i == len(cac_nhanh) - 1)
-        ky_hieu = "`-- " if la_nhanh_cuoi else "|-- "
-        noi = "    " if la_nhanh_cuoi else "|   "
+    for i, (value, subtree) in enumerate(branches_list):
+        is_last_branch = (i == len(branches_list) - 1)
+        symbol = "`-- " if is_last_branch else "|-- "
+        connector = "    " if is_last_branch else "|   "
 
-        if isinstance(cay_con, str):
-            print(f"{tien_to}{ky_hieu}[{ten_tt} = {gia_tri}] => [{cay_con.upper()}]")
+        if isinstance(subtree, str):
+            print(f"{prefix}{symbol}[{feature_name} = {value}] => [{subtree.upper()}]")
         else:
-            print(f"{tien_to}{ky_hieu}[{ten_tt} = {gia_tri}]")
-            in_cay(cay_con, tien_to + noi, la_nhanh_cuoi)
+            print(f"{prefix}{symbol}[{feature_name} = {value}]")
+            print_tree(subtree, prefix + connector, is_last_branch)
 
 
 # ---------------------------------------------------------------------------
 # DU DOAN MAU MOI BANG CAY QUYET DINH
 # ---------------------------------------------------------------------------
-def du_doan(cay, mau, tieu_de):
+def predict(tree, sample, header):
     """
     Duyet cay tu goc xuong la de du doan lop cho mau moi.
     Mau la dict: {ten_thuoc_tinh: gia_tri}
     """
     # Nut la => tra ve nhan lop
-    if isinstance(cay, str):
-        return cay
+    if isinstance(tree, str):
+        return tree
 
-    ten_tt = cay['thuoc_tinh']
-    gia_tri_mau = mau.get(ten_tt, "").lower().strip()
+    feature_name = tree['thuoc_tinh']
+    sample_value = sample.get(feature_name, "").lower().strip()
 
     # Tim nhanh tuong ung voi gia tri cua mau
-    if gia_tri_mau in cay['nhanh']:
-        return du_doan(cay['nhanh'][gia_tri_mau], mau, tieu_de)
+    if sample_value in tree['nhanh']:
+        return predict(tree['nhanh'][sample_value], sample, header)
     else:
         # Truong hop gia tri khong ton tai trong cay
         # => tra ve nhan phoi bien nhat (fallback)
@@ -261,95 +261,95 @@ def main():
     print("=" * 70)
 
     # Doc du lieu
-    duong_dan = "golf_df.csv"
-    tieu_de, du_lieu = doc_du_lieu(duong_dan)
-    cot_nhan = len(tieu_de) - 1  # Cot cuoi cung (Play)
+    file_path = "golf_df.csv"
+    header, data = read_data(file_path)
+    label_col = len(header) - 1  # Cot cuoi cung (Play)
 
     # --- In bang du lieu ---
     print("\n[BANG DU LIEU]")
     print("-" * 55)
     header_fmt = "{:<6} {:<12} {:<14} {:<10} {:<8} {:<6}"
-    print(header_fmt.format("STT", *tieu_de))
+    print(header_fmt.format("STT", *header))
     print("-" * 55)
-    for i, dong in enumerate(du_lieu, 1):
-        print(header_fmt.format(i, *dong))
+    for i, row in enumerate(data, 1):
+        print(header_fmt.format(i, *row))
     print("-" * 55)
-    print(f"Tong so mau: {len(du_lieu)}")
+    print(f"Tong so mau: {len(data)}")
 
     # --- Buoc 1: Tinh Entropy toan bo tap du lieu ---
-    entropy_goc = tinh_entropy(du_lieu, cot_nhan)
-    dem_lop = {}
-    for dong in du_lieu:
-        n = dong[cot_nhan]
-        dem_lop[n] = dem_lop.get(n, 0) + 1
+    base_entropy = calculate_entropy(data, label_col)
+    class_counts = {}
+    for row in data:
+        n = row[label_col]
+        class_counts[n] = class_counts.get(n, 0) + 1
 
     print("\n" + "=" * 70)
     print("[BUOC 1] ENTROPY CUA TOAN BO TAP DU LIEU")
     print("-" * 55)
-    print(f"  Tong mau: {len(du_lieu)}")
-    for lop, sl in dem_lop.items():
-        print(f"  Play={lop}: {sl} mau (p = {sl}/{len(du_lieu)} = {sl/len(du_lieu):.4f})")
+    print(f"  Tong mau: {len(data)}")
+    for label, count in class_counts.items():
+        print(f"  Play={label}: {count} mau (p = {count}/{len(data)} = {count/len(data):.4f})")
 
-    cong_thuc = "  Entropy(S) = "
-    cac_phan = []
-    for lop, sl in dem_lop.items():
-        p = sl / len(du_lieu)
-        cac_phan.append(f"-({sl}/{len(du_lieu)})*log2({sl}/{len(du_lieu)})")
-    cong_thuc += " + ".join(cac_phan)
-    print(cong_thuc)
-    print(f"  Entropy(S) = {entropy_goc:.4f}")
+    formula_str = "  Entropy(S) = "
+    parts = []
+    for label, count in class_counts.items():
+        p = count / len(data)
+        parts.append(f"-({count}/{len(data)})*log2({count}/{len(data)})")
+    formula_str += " + ".join(parts)
+    print(formula_str)
+    print(f"  Entropy(S) = {base_entropy:.4f}")
 
     # --- Buoc 2: Tinh Information Gain cho tung thuoc tinh ---
     print("\n" + "=" * 70)
     print("[BUOC 2] INFORMATION GAIN CHO TUNG THUOC TINH")
     print("-" * 55)
 
-    cac_cot_thuoc_tinh = [i for i in range(len(tieu_de)) if i != cot_nhan]
-    gain_cac_tt = {}
+    feature_cols = [i for i in range(len(header)) if i != label_col]
+    gains = {}
 
-    for cot in cac_cot_thuoc_tinh:
-        ten_tt = tieu_de[cot]
-        gain, chi_tiet, entropy_s = tinh_information_gain(du_lieu, cot, cot_nhan)
-        gain_cac_tt[ten_tt] = gain
+    for col in feature_cols:
+        feature_name = header[col]
+        gain, subset_details, entropy_s = calculate_information_gain(data, col, label_col)
+        gains[feature_name] = gain
 
-        print(f"\n  --- Thuoc tinh: {ten_tt} ---")
+        print(f"\n  --- Thuoc tinh: {feature_name} ---")
 
         # In chi tiet tung tap con
-        entropy_trung_binh_str = []
-        for gia_tri, info in chi_tiet.items():
-            dem_str = ", ".join(f"{k}={v}" for k, v in info['dem_lop'].items())
-            print(f"  {ten_tt}={gia_tri}: {info['so_mau']} mau ({dem_str})")
-            print(f"    Entropy({gia_tri}) = {info['entropy']:.4f}")
-            entropy_trung_binh_str.append(
-                f"({info['so_mau']}/{len(du_lieu)})*{info['entropy']:.4f}"
+        avg_entropy_strs = []
+        for value, info in subset_details.items():
+            count_str = ", ".join(f"{k}={v}" for k, v in info['dem_lop'].items())
+            print(f"  {feature_name}={value}: {info['so_mau']} mau ({count_str})")
+            print(f"    Entropy({value}) = {info['entropy']:.4f}")
+            avg_entropy_strs.append(
+                f"({info['so_mau']}/{len(data)})*{info['entropy']:.4f}"
             )
 
-        print(f"\n  Gain({ten_tt}) = Entropy(S) - [{' + '.join(entropy_trung_binh_str)}]")
-        print(f"  Gain({ten_tt}) = {entropy_s:.4f} - {entropy_s - gain:.4f} = {gain:.4f}")
+        print(f"\n  Gain({feature_name}) = Entropy(S) - [{' + '.join(avg_entropy_strs)}]")
+        print(f"  Gain({feature_name}) = {entropy_s:.4f} - {entropy_s - gain:.4f} = {gain:.4f}")
 
     # --- Buoc 3: Chon thuoc tinh co Gain lon nhat ---
-    tt_tot_nhat = max(gain_cac_tt, key=gain_cac_tt.get)
+    best_feature = max(gains, key=gains.get)
     print("\n" + "=" * 70)
     print("[BUOC 3] SO SANH INFORMATION GAIN")
     print("-" * 40)
-    for ten_tt, gain in gain_cac_tt.items():
-        dau = " <<< MAX" if ten_tt == tt_tot_nhat else ""
-        print(f"  Gain({ten_tt:<14}) = {gain:.4f}{dau}")
-    print(f"\n  => Chon thuoc tinh '{tt_tot_nhat}' lam nut goc (Gain lon nhat)")
+    for feature_name, gain in gains.items():
+        marker = " <<< MAX" if feature_name == best_feature else ""
+        print(f"  Gain({feature_name:<14}) = {gain:.4f}{marker}")
+    print(f"\n  => Chon thuoc tinh '{best_feature}' lam nut goc (Gain lon nhat)")
 
     # --- Buoc 4: Xay dung cay quyet dinh ---
     print("\n" + "=" * 70)
     print("[BUOC 4] XAY DUNG CAY QUYET DINH (DE QUY)")
     print("-" * 40)
 
-    cay = xay_dung_cay(du_lieu, tieu_de, cac_cot_thuoc_tinh, cot_nhan)
+    tree = build_tree(data, header, feature_cols, label_col)
 
-    print(f"\n  Nut goc: [{tt_tot_nhat}]")
-    in_cay(cay, tien_to="  ")
+    print(f"\n  Nut goc: [{best_feature}]")
+    print_tree(tree, prefix="  ")
 
     # --- Buoc 5: Du doan mau moi ---
     # Mau can du doan (co the thay doi theo yeu cau giao vien)
-    mau_moi = {
+    new_sample = {
         "Outlook": "sunny",
         "Temperature": "cool",
         "Humidity": "high",
@@ -360,29 +360,28 @@ def main():
     print("[BUOC 5] DU DOAN MAU MOI")
     print("-" * 40)
     print("  Mau can phan loai:")
-    for ten, gia_tri in mau_moi.items():
-        print(f"    {ten} = {gia_tri}")
+    for feature_name, value in new_sample.items():
+        print(f"    {feature_name} = {value}")
 
     # Truy vet duong di tren cay
     print("\n  Qua trinh duyet cay:")
-    cay_hien_tai = cay
-    buoc = 1
-    while isinstance(cay_hien_tai, dict):
-        ten_tt = cay_hien_tai['thuoc_tinh']
-        gia_tri = mau_moi.get(ten_tt, "").lower()
-        print(f"    Buoc {buoc}: {ten_tt} = {gia_tri} --> di theo nhanh '{gia_tri}'")
-        cay_hien_tai = cay_hien_tai['nhanh'].get(gia_tri, "khong xac dinh")
-        buoc += 1
+    current_tree = tree
+    step = 1
+    while isinstance(current_tree, dict):
+        feature_name = current_tree['thuoc_tinh']
+        value = new_sample.get(feature_name, "").lower()
+        print(f"    Buoc {step}: {feature_name} = {value} --> di theo nhanh '{value}'")
+        current_tree = current_tree['nhanh'].get(value, "khong xac dinh")
+        step += 1
 
-    ket_qua = du_doan(cay, mau_moi, tieu_de)
-    print(f"\n  => KET QUA: Play = {ket_qua.upper()}")
+    result = predict(tree, new_sample, header)
+    print(f"\n  => KET QUA: Play = {result.upper()}")
     print("=" * 70)
     
     # Thêm mẫu được dự đoán vào lại file csv gốc
-    # with open(duong_dan, mode='a', encoding='utf-8', newline='') as f:
+    # with open(file_path, mode='a', encoding='utf-8', newline='') as f:
     #     writer = csv.writer(f)
-    #     dong_moi = [mau_moi.get(ten, "") for ten in tieu_de[:-1]] + [ket_qua]
-    #     writer.writerow(dong_moi)
+    #     new_row = [new_sample.get(name, "") for name in header[:-1]] + [result]
+    #     writer.writerow(new_row)
 if __name__ == "__main__":
     main()
-    

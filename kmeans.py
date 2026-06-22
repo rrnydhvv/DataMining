@@ -30,20 +30,20 @@ import math
 # ---------------------------------------------------------------------------
 # BUOC 0: Doc du lieu tu file CSV
 # ---------------------------------------------------------------------------
-def doc_du_lieu(duong_dan):
+def read_data(file_path):
     """
     Doc file CSV va tra ve tieu_de (header) va du_lieu (list cac dong).
     """
-    du_lieu = []
-    tieu_de = []
-    with open(duong_dan, mode='r', encoding='utf-8') as f:
+    data = []
+    header = []
+    with open(file_path, mode='r', encoding='utf-8') as f:
         reader = csv.reader(f)
-        tieu_de = next(reader)
-        for dong in reader:
-            if len(dong) > 0:
-                dong_sach = [gia_tri.strip().lower() for gia_tri in dong]
-                du_lieu.append(dong_sach)
-    return tieu_de, du_lieu
+        header = next(reader)
+        for row in reader:
+            if len(row) > 0:
+                clean_row = [value.strip().lower() for value in row]
+                data.append(clean_row)
+    return header, data
 
 
 # ---------------------------------------------------------------------------
@@ -76,57 +76,57 @@ def doc_du_lieu(duong_dan):
 #   - Co the gap van de "loi nguyen chieu cao" (curse of dimensionality)
 #     voi du lieu co nhieu gia tri phan biet
 # ---------------------------------------------------------------------------
-def tao_bang_ma_hoa_ohe(du_lieu, cac_cot):
+def create_ohe_encoding_table(data, cols):
     """
     Tao bang ma hoa One-Hot Encoding cho cac cot categorical.
     Tra ve:
-      - bang_ma: dict {chi_so_cot: {gia_tri: vector_ohe}}
-      - ten_cot_ohe: danh sach ten cac cot sau OHE (de hien thi)
+      - encoding_table: dict {chi_so_cot: {gia_tri: vector_ohe}}
+      - ohe_col_names: danh sach ten cac cot sau OHE (de hien thi)
     Vi du: Outlook co 3 gia tri => tao 3 cot: Outlook_overcast, Outlook_rainy, Outlook_sunny
     """
-    bang_ma = {}
-    ten_cot_ohe = []  # Ten cac cot sau OHE (de in bang)
+    encoding_table = {}
+    ohe_col_names = []  # Ten cac cot sau OHE (de in bang)
 
-    for cot in cac_cot:
+    for col in cols:
         # Thu thap tat ca gia tri duy nhat cua cot
-        gia_tri_set = []
-        for dong in du_lieu:
-            if dong[cot] not in gia_tri_set:
-                gia_tri_set.append(dong[cot])
-        gia_tri_set.sort()  # Sap xep de nhat quan
+        unique_values = []
+        for row in data:
+            if row[col] not in unique_values:
+                unique_values.append(row[col])
+        unique_values.sort()  # Sap xep de nhat quan
 
-        so_gia_tri = len(gia_tri_set)
+        num_values = len(unique_values)
 
         # Tao vector OHE cho moi gia tri
         # Vi du: 3 gia tri => overcast=[1,0,0], rainy=[0,1,0], sunny=[0,0,1]
-        bang_ma[cot] = {}
-        for i, gia_tri in enumerate(gia_tri_set):
-            vector = [0] * so_gia_tri       # Tao vector toan 0
+        encoding_table[col] = {}
+        for i, value in enumerate(unique_values):
+            vector = [0] * num_values       # Tao vector toan 0
             vector[i] = 1                    # Dat vi tri thu i = 1
-            bang_ma[cot][gia_tri] = vector
+            encoding_table[col][value] = vector
 
         # Luu ten cot OHE
-        for gia_tri in gia_tri_set:
-            ten_cot_ohe.append(f"{gia_tri}")
+        for value in unique_values:
+            ohe_col_names.append(f"{value}")
 
-    return bang_ma, ten_cot_ohe
+    return encoding_table, ohe_col_names
 
 
-def ma_hoa_du_lieu_ohe(du_lieu, bang_ma, cac_cot):
+def encode_data_ohe(data, encoding_table, cols):
     """
     Chuyen du lieu categorical thanh du lieu so bang One-Hot Encoding.
     Moi dong du lieu duoc chuyen thanh 1 vector nhi phan dai.
     Tra ve: list cac vector so (list of list)
     """
-    du_lieu_so = []
-    for dong in du_lieu:
+    numeric_data = []
+    for row in data:
         vector = []
-        for cot in cac_cot:
-            gia_tri = dong[cot]
+        for col in cols:
+            value = row[col]
             # Noi (concatenate) vector OHE cua tung thuoc tinh
-            vector.extend(bang_ma[cot][gia_tri])
-        du_lieu_so.append(vector)
-    return du_lieu_so
+            vector.extend(encoding_table[col][value])
+        numeric_data.append(vector)
+    return numeric_data
 
 
 # ---------------------------------------------------------------------------
@@ -137,14 +137,14 @@ def ma_hoa_du_lieu_ohe(du_lieu, bang_ma, cac_cot):
 #   d = sqrt( (0-1)^2 + (1-2)^2 + (0-1)^2 + (1-0)^2 )
 #   d = sqrt( 1 + 1 + 1 + 1 ) = sqrt(4) = 2.0
 # ---------------------------------------------------------------------------
-def khoang_cach_euclid(diem_a, diem_b):
+def euclidean_distance(point_a, point_b):
     """
     Tinh khoang cach Euclid giua 2 diem (2 vector so).
     """
-    tong = 0
-    for i in range(len(diem_a)):
-        tong += (diem_a[i] - diem_b[i]) ** 2
-    return math.sqrt(tong)
+    total = 0
+    for i in range(len(point_a)):
+        total += (point_a[i] - point_b[i]) ** 2
+    return math.sqrt(total)
 
 
 # ---------------------------------------------------------------------------
@@ -154,16 +154,16 @@ def khoang_cach_euclid(diem_a, diem_b):
 # Cach 2: Chon ngau nhien K diem (thuc te dung cach nay)
 # O day dung Cach 1 de ket qua co dinh, de kiem tra khi thi
 # ---------------------------------------------------------------------------
-def khoi_tao_tam_cum(du_lieu_so, k):
+def initialize_centroids(numeric_data, k):
     """
     Chon K diem dau tien lam tam cum ban dau.
     Tra ve: list cac tam cum (moi tam la 1 list so)
     """
-    tam_cum = []
+    centroids = []
     for i in range(k):
         # Sao chep diem (tranh tham chieu)
-        tam_cum.append(du_lieu_so[i][:])
-    return tam_cum
+        centroids.append(numeric_data[i][:])
+    return centroids
 
 
 # ---------------------------------------------------------------------------
@@ -172,25 +172,25 @@ def khoi_tao_tam_cum(du_lieu_so, k):
 # Voi moi diem du lieu, tinh khoang cach den tat ca K tam cum,
 # roi gan diem vao cum co tam gan nhat.
 # ---------------------------------------------------------------------------
-def gan_cum(du_lieu_so, tam_cum):
+def assign_clusters(numeric_data, centroids):
     """
     Gan moi diem du lieu vao cum co tam cum gan nhat.
     Tra ve: list cac chi so cum (0, 1, ..., K-1) tuong ung voi tung diem
     """
-    phan_cum = []  # Chi so cum cua tung diem
-    for diem in du_lieu_so:
-        kc_nho_nhat = float('inf')  # Vo cuc
-        cum_gan_nhat = 0
+    cluster_assignments = []  # Chi so cum cua tung diem
+    for point in numeric_data:
+        min_dist = float('inf')  # Vo cuc
+        closest_cluster = 0
 
-        for j, tam in enumerate(tam_cum):
-            kc = khoang_cach_euclid(diem, tam)
-            if kc < kc_nho_nhat:
-                kc_nho_nhat = kc
-                cum_gan_nhat = j
+        for j, centroid in enumerate(centroids):
+            dist = euclidean_distance(point, centroid)
+            if dist < min_dist:
+                min_dist = dist
+                closest_cluster = j
 
-        phan_cum.append(cum_gan_nhat)
+        cluster_assignments.append(closest_cluster)
 
-    return phan_cum
+    return cluster_assignments
 
 
 # ---------------------------------------------------------------------------
@@ -200,28 +200,28 @@ def gan_cum(du_lieu_so, tam_cum):
 # Vi du: Cum 1 co cac diem [0,1,0], [2,1,1], [1,0,1]
 #   Tam moi = [(0+2+1)/3, (1+1+0)/3, (0+1+1)/3] = [1.0, 0.67, 0.67]
 # ---------------------------------------------------------------------------
-def cap_nhat_tam_cum(du_lieu_so, phan_cum, k, so_chieu):
+def update_centroids(numeric_data, cluster_assignments, k, num_dims):
     """
     Tinh tam cum moi = trung binh cac diem trong moi cum.
     Tra ve: list tam cum moi
     """
-    tam_moi = []
+    new_centroids = []
     for j in range(k):
         # Lay tat ca diem thuoc cum j
-        cac_diem = [du_lieu_so[i] for i in range(len(du_lieu_so)) if phan_cum[i] == j]
+        cluster_points = [numeric_data[i] for i in range(len(numeric_data)) if cluster_assignments[i] == j]
 
-        if len(cac_diem) == 0:
+        if len(cluster_points) == 0:
             # Cum rong: giu nguyen tam cu (truong hop hiem gap)
-            tam_moi.append([0.0] * so_chieu)
+            new_centroids.append([0.0] * num_dims)
         else:
             # Tinh trung binh tung chieu
-            tam = []
-            for d in range(so_chieu):
-                trung_binh = sum(diem[d] for diem in cac_diem) / len(cac_diem)
-                tam.append(round(trung_binh, 4))
-            tam_moi.append(tam)
+            centroid = []
+            for d in range(num_dims):
+                mean_val = sum(point[d] for point in cluster_points) / len(cluster_points)
+                centroid.append(round(mean_val, 4))
+            new_centroids.append(centroid)
 
-    return tam_moi
+    return new_centroids
 
 
 # ---------------------------------------------------------------------------
@@ -229,54 +229,54 @@ def cap_nhat_tam_cum(du_lieu_so, phan_cum, k, so_chieu):
 # ---------------------------------------------------------------------------
 # Hoi tu khi tam cum khong thay doi (hoac thay doi rat nho) giua 2 vong lap
 # ---------------------------------------------------------------------------
-def da_hoi_tu(tam_cu, tam_moi, nguong=0.0001):
+def has_converged(old_centroids, new_centroids, threshold=0.0001):
     """
     Kiem tra xem thuat toan da hoi tu chua.
     Hoi tu khi tong khoang cach dich chuyen cua cac tam < nguong.
     """
-    tong_dich_chuyen = 0
-    for i in range(len(tam_cu)):
-        tong_dich_chuyen += khoang_cach_euclid(tam_cu[i], tam_moi[i])
-    return tong_dich_chuyen < nguong
+    total_shift = 0
+    for i in range(len(old_centroids)):
+        total_shift += euclidean_distance(old_centroids[i], new_centroids[i])
+    return total_shift < threshold
 
 
 # ---------------------------------------------------------------------------
 # THUAT TOAN K-MEANS CHINH
 # ---------------------------------------------------------------------------
-def kmeans(du_lieu_so, k, so_vong_toi_da=20):
+def kmeans_algorithm(numeric_data, k, max_iterations=20):
     """
     Chay thuat toan K-Means.
     Tra ve: phan_cum (list chi so cum), tam_cum (list cac tam), lich_su (log)
     """
-    so_chieu = len(du_lieu_so[0])
-    lich_su = []  # Luu lich su moi vong lap
+    num_dims = len(numeric_data[0])
+    history = []  # Luu lich su moi vong lap
 
     # Buoc 1: Khoi tao tam cum
-    tam_cum = khoi_tao_tam_cum(du_lieu_so, k)
+    centroids = initialize_centroids(numeric_data, k)
 
-    for vong in range(1, so_vong_toi_da + 1):
+    for iteration in range(1, max_iterations + 1):
         # Buoc 2: Gan moi diem vao cum gan nhat
-        phan_cum = gan_cum(du_lieu_so, tam_cum)
+        cluster_assignments = assign_clusters(numeric_data, centroids)
 
         # Buoc 3: Cap nhat tam cum
-        tam_moi = cap_nhat_tam_cum(du_lieu_so, phan_cum, k, so_chieu)
+        new_centroids = update_centroids(numeric_data, cluster_assignments, k, num_dims)
 
         # Luu lich su
-        lich_su.append({
-            'vong': vong,
-            'tam_cum': [t[:] for t in tam_cum],
-            'tam_moi': [t[:] for t in tam_moi],
-            'phan_cum': phan_cum[:]
+        history.append({
+            'vong': iteration,
+            'tam_cum': [t[:] for t in centroids],
+            'tam_moi': [t[:] for t in new_centroids],
+            'phan_cum': cluster_assignments[:]
         })
 
         # Buoc 4: Kiem tra hoi tu
-        if da_hoi_tu(tam_cum, tam_moi):
-            tam_cum = tam_moi
+        if has_converged(centroids, new_centroids):
+            centroids = new_centroids
             break
 
-        tam_cum = tam_moi
+        centroids = new_centroids
 
-    return phan_cum, tam_cum, lich_su
+    return cluster_assignments, centroids, history
 
 
 # ===========================================================================
@@ -288,24 +288,24 @@ def main():
     print("=" * 70)
 
     # Doc du lieu
-    duong_dan = "golf_df.csv"
-    tieu_de, du_lieu = doc_du_lieu(duong_dan)
-    cot_nhan = len(tieu_de) - 1
+    file_path = "golf_df.csv"
+    header, data = read_data(file_path)
+    label_col = len(header) - 1
 
     # --- In bang du lieu goc ---
     print("\n[BANG DU LIEU GOC]")
     print("-" * 55)
     header_fmt = "{:<6} {:<12} {:<14} {:<10} {:<8} {:<6}"
-    print(header_fmt.format("STT", *tieu_de))
+    print(header_fmt.format("STT", *header))
     print("-" * 55)
-    for i, dong in enumerate(du_lieu, 1):
-        print(header_fmt.format(i, *dong))
+    for i, row in enumerate(data, 1):
+        print(header_fmt.format(i, *row))
     print("-" * 55)
 
     # --- Ma hoa du lieu ---
     # Chi dung cac thuoc tinh (khong dung cot nhan Play)
-    cac_cot = [i for i in range(len(tieu_de)) if i != cot_nhan]
-    bang_ma, ten_cot_ohe = tao_bang_ma_hoa_ohe(du_lieu, cac_cot)
+    cols = [i for i in range(len(header)) if i != label_col]
+    encoding_table, ohe_col_names = create_ohe_encoding_table(data, cols)
 
     print("\n" + "=" * 70)
     print("[BUOC 0] MA HOA DU LIEU CATEGORICAL => SO (One-Hot Encoding)")
@@ -314,118 +314,118 @@ def main():
     print("  chi co dung 1 vi tri = 1, con lai = 0.")
     print("  => Khong tao quan he thu tu gia giua cac gia tri.")
 
-    for cot, ma in bang_ma.items():
-        ten_cot = tieu_de[cot]
-        so_gia_tri = len(ma)
-        print(f"\n  {ten_cot} ({so_gia_tri} gia tri => {so_gia_tri} cot OHE):")
-        for gia_tri, vector in ma.items():
-            print(f"    {gia_tri:<12} => {vector}")
+    for col, encoding in encoding_table.items():
+        col_name = header[col]
+        num_values = len(encoding)
+        print(f"\n  {col_name} ({num_values} gia tri => {num_values} cot OHE):")
+        for value, vector in encoding.items():
+            print(f"    {value:<12} => {vector}")
 
-    du_lieu_so = ma_hoa_du_lieu_ohe(du_lieu, bang_ma, cac_cot)
-    so_chieu = len(du_lieu_so[0])
+    numeric_data = encode_data_ohe(data, encoding_table, cols)
+    num_dims = len(numeric_data[0])
 
-    print(f"\n  Du lieu sau khi ma hoa ({so_chieu} chieu):")
-    print(f"  Ten cot OHE: {ten_cot_ohe}")
-    header2 = "{:<6}" + "{:<4}" * so_chieu
-    print("  " + header2.format("STT", *ten_cot_ohe[:so_chieu]))
-    print("  " + "-" * (6 + 4 * so_chieu))
-    for i, vector in enumerate(du_lieu_so, 1):
+    print(f"\n  Du lieu sau khi ma hoa ({num_dims} chieu):")
+    print(f"  Ten cot OHE: {ohe_col_names}")
+    header2 = "{:<6}" + "{:<4}" * num_dims
+    print("  " + header2.format("STT", *ohe_col_names[:num_dims]))
+    print("  " + "-" * (6 + 4 * num_dims))
+    for i, vector in enumerate(numeric_data, 1):
         print("  " + header2.format(i, *vector))
 
     # --- Chay K-Means ---
-    K = 2  # So cum (2 cum tuong ung voi yes/no, co the thay doi)
+    num_clusters = 2  # So cum (2 cum tuong ung voi yes/no, co the thay doi)
     print("\n" + "=" * 70)
-    print(f"[K-MEANS] SO CUM K = {K}")
+    print(f"[K-MEANS] SO CUM K = {num_clusters}")
     print("=" * 70)
 
     # Buoc 1: Khoi tao tam cum
     print(f"\n[BUOC 1] KHOI TAO TAM CUM BAN DAU")
-    print(f"  (Chon {K} diem dau tien lam tam cum)")
-    for i in range(K):
-        print(f"  Tam cum {i+1} (C{i+1}): {du_lieu_so[i]}")
+    print(f"  (Chon {num_clusters} diem dau tien lam tam cum)")
+    for i in range(num_clusters):
+        print(f"  Tam cum {i+1} (C{i+1}): {numeric_data[i]}")
         # Hien thi du lieu goc tuong ung
-        goc = [du_lieu[i][c] for c in cac_cot]
-        print(f"    (Tuong ung mau {i+1}: {goc})")
+        original_row = [data[i][c] for c in cols]
+        print(f"    (Tuong ung mau {i+1}: {original_row})")
 
     # Chay thuat toan
-    phan_cum, tam_cum_cuoi, lich_su = kmeans(du_lieu_so, K)
+    cluster_assignments, final_centroids, history = kmeans_algorithm(numeric_data, num_clusters)
 
     # --- In chi tiet tung vong lap ---
-    for log in lich_su:
-        vong = log['vong']
+    for log_entry in history:
+        iteration = log_entry['vong']
         print(f"\n{'=' * 70}")
-        print(f"[VONG LAP {vong}]")
+        print(f"[VONG LAP {iteration}]")
         print("-" * 55)
 
         # In bang khoang cach va phan cum
         print(f"\n  [BUOC 2] TINH KHOANG CACH VA GAN CUM:")
-        header3 = "  {:<6}" + "{:<16}" * K + "{:<10}"
-        ten_tam = [f"d(x,C{j+1})" for j in range(K)]
-        print(header3.format("STT", *ten_tam, "Cum"))
-        print("  " + "-" * (6 + 16 * K + 10))
+        header3 = "  {:<6}" + "{:<16}" * num_clusters + "{:<10}"
+        centroid_names = [f"d(x,C{j+1})" for j in range(num_clusters)]
+        print(header3.format("STT", *centroid_names, "Cum"))
+        print("  " + "-" * (6 + 16 * num_clusters + 10))
 
-        for i, diem in enumerate(du_lieu_so):
-            khoang_cach = []
-            for j in range(K):
-                kc = khoang_cach_euclid(diem, log['tam_cum'][j])
-                khoang_cach.append(f"{kc:.4f}")
-            cum = log['phan_cum'][i] + 1  # Hien thi tu 1
-            row_vals = [i + 1] + khoang_cach + [f"C{cum}"]
-            print(("  {:<6}" + "{:<16}" * K + "{:<10}").format(*row_vals))
+        for i, point in enumerate(numeric_data):
+            distances = []
+            for j in range(num_clusters):
+                dist = euclidean_distance(point, log_entry['tam_cum'][j])
+                distances.append(f"{dist:.4f}")
+            cluster_idx = log_entry['phan_cum'][i] + 1  # Hien thi tu 1
+            row_vals = [i + 1] + distances + [f"C{cluster_idx}"]
+            print(("  {:<6}" + "{:<16}" * num_clusters + "{:<10}").format(*row_vals))
 
         # In cac diem trong moi cum
         print(f"\n  Ket qua phan cum:")
-        for j in range(K):
-            cac_diem_cum = [i + 1 for i in range(len(du_lieu_so)) if log['phan_cum'][i] == j]
-            print(f"    Cum {j+1} (C{j+1}): Mau {cac_diem_cum} ({len(cac_diem_cum)} diem)")
+        for j in range(num_clusters):
+            cluster_point_indices = [i + 1 for i in range(len(numeric_data)) if log_entry['phan_cum'][i] == j]
+            print(f"    Cum {j+1} (C{j+1}): Mau {cluster_point_indices} ({len(cluster_point_indices)} diem)")
 
         # In tam cum moi
         print(f"\n  [BUOC 3] CAP NHAT TAM CUM (Trung binh cac diem trong cum):")
-        for j in range(K):
-            cac_diem = [du_lieu_so[i] for i in range(len(du_lieu_so)) if log['phan_cum'][i] == j]
-            print(f"    Tam cum {j+1} cu:  {log['tam_cum'][j]}")
-            print(f"    Tam cum {j+1} moi: {log['tam_moi'][j]}")
+        for j in range(num_clusters):
+            cluster_points = [numeric_data[i] for i in range(len(numeric_data)) if log_entry['phan_cum'][i] == j]
+            print(f"    Tam cum {j+1} cu:  {log_entry['tam_cum'][j]}")
+            print(f"    Tam cum {j+1} moi: {log_entry['tam_moi'][j]}")
 
             # Chi tiet tinh trung binh cho moi chieu
-            if len(cac_diem) > 0:
-                chi_tiet = []
-                for d in range(len(cac_diem[0])):
-                    cac_gt = [p[d] for p in cac_diem]
-                    tb = sum(cac_gt) / len(cac_gt)
-                    chi_tiet.append(f"({'+'.join(str(v) for v in cac_gt)})/{len(cac_gt)}={tb:.4f}")
-                print(f"      Tinh: [{', '.join(chi_tiet)}]")
+            if len(cluster_points) > 0:
+                details = []
+                for d in range(len(cluster_points[0])):
+                    dim_values = [p[d] for p in cluster_points]
+                    mean_val = sum(dim_values) / len(dim_values)
+                    details.append(f"({'+'.join(str(v) for v in dim_values)})/{len(dim_values)}={mean_val:.4f}")
+                print(f"      Tinh: [{', '.join(details)}]")
             print()
 
         # Kiem tra hoi tu
-        if da_hoi_tu(log['tam_cum'], log['tam_moi']):
+        if has_converged(log_entry['tam_cum'], log_entry['tam_moi']):
             print(f"  => HOI TU! Tam cum khong thay doi.")
         else:
-            dich_chuyen = sum(
-                khoang_cach_euclid(log['tam_cum'][j], log['tam_moi'][j])
-                for j in range(K)
+            shift = sum(
+                euclidean_distance(log_entry['tam_cum'][j], log_entry['tam_moi'][j])
+                for j in range(num_clusters)
             )
-            print(f"  Tong dich chuyen tam cum: {dich_chuyen:.4f} (chua hoi tu)")
+            print(f"  Tong dich chuyen tam cum: {shift:.4f} (chua hoi tu)")
 
     # --- Ket qua cuoi cung ---
     print("\n" + "=" * 70)
     print("[KET QUA CUOI CUNG]")
     print("-" * 55)
-    print(f"  So vong lap: {len(lich_su)}")
-    print(f"  So cum K = {K}")
+    print(f"  So vong lap: {len(history)}")
+    print(f"  So cum K = {num_clusters}")
     print()
 
     # In tam cum cuoi
-    for j in range(K):
-        print(f"  Tam cum {j+1}: {tam_cum_cuoi[j]}")
+    for j in range(num_clusters):
+        print(f"  Tam cum {j+1}: {final_centroids[j]}")
 
     # In ket qua phan cum
     print()
-    for j in range(K):
+    for j in range(num_clusters):
         print(f"  Cum {j+1}:")
-        for i in range(len(du_lieu)):
-            if phan_cum[i] == j:
-                goc = du_lieu[i]
-                print(f"    Mau {i+1:>2}: {', '.join(goc[:cot_nhan])} | Play={goc[cot_nhan]}")
+        for i in range(len(data)):
+            if cluster_assignments[i] == j:
+                original_row = data[i]
+                print(f"    Mau {i+1:>2}: {', '.join(original_row[:label_col])} | Play={original_row[label_col]}")
 
     # --- So sanh voi nhan thuc te ---
     print("\n" + "=" * 70)
@@ -435,24 +435,24 @@ def main():
     print("   Phan nay chi de so sanh tham khao.)")
     print()
 
-    for j in range(K):
-        dem_nhan = {}
-        for i in range(len(du_lieu)):
-            if phan_cum[i] == j:
-                nhan = du_lieu[i][cot_nhan]
-                dem_nhan[nhan] = dem_nhan.get(nhan, 0) + 1
+    for j in range(num_clusters):
+        label_counts = {}
+        for i in range(len(data)):
+            if cluster_assignments[i] == j:
+                label = data[i][label_col]
+                label_counts[label] = label_counts.get(label, 0) + 1
 
-        tong = sum(dem_nhan.values())
-        print(f"  Cum {j+1} ({tong} mau):")
-        for nhan, sl in dem_nhan.items():
-            phan_tram = (sl / tong) * 100
-            print(f"    Play={nhan}: {sl} mau ({phan_tram:.1f}%)")
+        total = sum(label_counts.values())
+        print(f"  Cum {j+1} ({total} mau):")
+        for label, count in label_counts.items():
+            percentage = (count / total) * 100
+            print(f"    Play={label}: {count} mau ({percentage:.1f}%)")
 
     print("\n" + "=" * 70)
     print("  LUU Y: Du lieu categorical da duoc ma hoa bang One-Hot Encoding.")
     print("  OHE dam bao khoang cach giua cac gia tri khac nhau la nhu nhau,")
     print("  phu hop hon Label Encoding cho K-Means.")
-    print("  Tuy nhien, so chieu tang len (4 thuoc tinh => " + str(so_chieu) + " chieu).")
+    print("  Tuy nhien, so chieu tang len (4 thuoc tinh => " + str(num_dims) + " chieu).")
     print("=" * 70)
 
 if __name__ == "__main__":

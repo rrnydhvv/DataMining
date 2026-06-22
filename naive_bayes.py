@@ -30,23 +30,23 @@ import csv
 # ---------------------------------------------------------------------------
 # BUOC 0: Doc du lieu tu file CSV
 # ---------------------------------------------------------------------------
-def doc_du_lieu(duong_dan):
+def read_data(file_path):
     """
     Doc file CSV va tra ve:
-      - tieu_de: danh sach ten cot (header)
-      - du_lieu: danh sach cac dong, moi dong la 1 danh sach gia tri
+      - header: danh sach ten cot
+      - data: danh sach cac dong, moi dong la 1 danh sach gia tri
     """
-    du_lieu = []
-    tieu_de = []
-    with open(duong_dan, mode='r', encoding='utf-8') as f:
+    data = []
+    header = []
+    with open(file_path, mode='r', encoding='utf-8') as f:
         reader = csv.reader(f)
-        tieu_de = next(reader)  # Dong dau tien la header
-        for dong in reader:
-            if len(dong) > 0:  # Bo qua dong trong
+        header = next(reader)  # Dong dau tien la header
+        for row in reader:
+            if len(row) > 0:  # Bo qua dong trong
                 # Chuan hoa: chuyen ve chu thuong, bo khoang trang thua
-                dong_sach = [gia_tri.strip().lower() for gia_tri in dong]
-                du_lieu.append(dong_sach)
-    return tieu_de, du_lieu
+                clean_row = [value.strip().lower() for value in row]
+                data.append(clean_row)
+    return header, data
 
 
 # ---------------------------------------------------------------------------
@@ -55,27 +55,27 @@ def doc_du_lieu(duong_dan):
 # Xac suat tien nghiem = So mau thuoc lop C / Tong so mau
 # Vi du: P(Play=yes) = 9/14, P(Play=no) = 5/14
 # ---------------------------------------------------------------------------
-def tinh_xac_suat_tien_nghiem(du_lieu, cot_nhan):
+def calculate_prior_probability(data, label_col):
     """
     Tinh xac suat tien nghiem P(C) cho tung gia tri cua cot nhan (lop).
     Tra ve dict: {gia_tri_lop: xac_suat}
     Vi du: {'yes': 9/14, 'no': 5/14}
     """
-    tong_mau = len(du_lieu)
-    dem_lop = {}  # Dem so luong mau trong tung lop
+    total_samples = len(data)
+    class_counts = {}  # Dem so luong mau trong tung lop
 
-    for dong in du_lieu:
-        nhan = dong[cot_nhan]
-        if nhan not in dem_lop:
-            dem_lop[nhan] = 0
-        dem_lop[nhan] += 1
+    for row in data:
+        label = row[label_col]
+        if label not in class_counts:
+            class_counts[label] = 0
+        class_counts[label] += 1
 
     # Tinh xac suat = so_mau_lop / tong_mau
-    xs_tien_nghiem = {}
-    for lop, so_luong in dem_lop.items():
-        xs_tien_nghiem[lop] = so_luong / tong_mau
+    prior_probs = {}
+    for cls, count in class_counts.items():
+        prior_probs[cls] = count / total_samples
 
-    return xs_tien_nghiem, dem_lop
+    return prior_probs, class_counts
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ def tinh_xac_suat_tien_nghiem(du_lieu, cot_nhan):
 # P(xi|C) = So mau co thuoc tinh xi VA thuoc lop C / So mau thuoc lop C
 # Vi du: P(Outlook=sunny | Play=yes) = 2/9
 # ---------------------------------------------------------------------------
-def tinh_xac_suat_dieu_kien(du_lieu, cot_thuoc_tinh, cot_nhan):
+def calculate_conditional_probability(data, feature_col, label_col):
     """
     Tinh xac suat co dieu kien P(xi|C) cho 1 thuoc tinh cu the.
     Tra ve dict long: {gia_tri_lop: {gia_tri_thuoc_tinh: xac_suat}}
@@ -92,31 +92,31 @@ def tinh_xac_suat_dieu_kien(du_lieu, cot_thuoc_tinh, cot_nhan):
             'no':  {'sunny': 3/5, 'overcast': 0/5, 'rainy': 2/5}}
     """
     # Dem so mau theo (lop, gia_tri_thuoc_tinh)
-    dem = {}       # {lop: {gia_tri: so_luong}}
-    dem_lop = {}   # {lop: tong_so_mau_cua_lop}
+    counts = {}       # {lop: {gia_tri: so_luong}}
+    class_counts = {}   # {lop: tong_so_mau_cua_lop}
 
-    for dong in du_lieu:
-        nhan = dong[cot_nhan]
-        gia_tri = dong[cot_thuoc_tinh]
+    for row in data:
+        label = row[label_col]
+        value = row[feature_col]
 
-        if nhan not in dem:
-            dem[nhan] = {}
-            dem_lop[nhan] = 0
+        if label not in counts:
+            counts[label] = {}
+            class_counts[label] = 0
 
-        dem_lop[nhan] += 1
+        class_counts[label] += 1
 
-        if gia_tri not in dem[nhan]:
-            dem[nhan][gia_tri] = 0
-        dem[nhan][gia_tri] += 1
+        if value not in counts[label]:
+            counts[label][value] = 0
+        counts[label][value] += 1
 
-    # Tinh xac suat P(xi|C) = dem[lop][gia_tri] / dem_lop[lop]
-    xs_dieu_kien = {}
-    for lop in dem:
-        xs_dieu_kien[lop] = {}
-        for gia_tri in dem[lop]:
-            xs_dieu_kien[lop][gia_tri] = dem[lop][gia_tri] / dem_lop[lop]
+    # Tinh xac suat P(xi|C) = counts[lop][gia_tri] / class_counts[lop]
+    cond_probs = {}
+    for cls in counts:
+        cond_probs[cls] = {}
+        for value in counts[cls]:
+            cond_probs[cls][value] = counts[cls][value] / class_counts[cls]
 
-    return xs_dieu_kien
+    return cond_probs
 
 
 # ---------------------------------------------------------------------------
@@ -131,57 +131,57 @@ def tinh_xac_suat_dieu_kien(du_lieu, cot_thuoc_tinh, cot_nhan):
 #   Cach xu ly: P(xi|C) = (so_mau + 1) / (tong_mau_lop + so_gia_tri_phan_biet)
 #   Day la ky thuat pho bien de tranh xs = 0
 # ---------------------------------------------------------------------------
-def du_doan(mau_moi, du_lieu, tieu_de, cot_nhan):
+def predict_sample(new_sample, data, header, label_col):
     """
-    Du doan lop cho mau_moi (dict: {ten_thuoc_tinh: gia_tri}).
+    Du doan lop cho new_sample (dict: {ten_thuoc_tinh: gia_tri}).
     Tra ve: lop du doan, dict chi tiet xs tung lop
     """
     # Buoc 1: Tinh xs tien nghiem
-    xs_tien_nghiem, dem_lop = tinh_xac_suat_tien_nghiem(du_lieu, cot_nhan)
+    prior_probs, class_counts = calculate_prior_probability(data, label_col)
 
     # Buoc 2: Tinh xs co dieu kien cho tung thuoc tinh (tru cot nhan)
     # Luu tru: {ten_cot: {lop: {gia_tri: xs}}}
-    bang_xs_dieu_kien = {}
-    for i in range(len(tieu_de)):
-        if i == cot_nhan:
+    cond_prob_table = {}
+    for i in range(len(header)):
+        if i == label_col:
             continue  # Bo qua cot nhan (cot Play)
-        ten_cot = tieu_de[i]
-        bang_xs_dieu_kien[ten_cot] = tinh_xac_suat_dieu_kien(du_lieu, i, cot_nhan)
+        col_name = header[i]
+        cond_prob_table[col_name] = calculate_conditional_probability(data, i, label_col)
 
     # Buoc 3: Tinh P(C|X) cho tung lop
     # P(C|X) ty le voi P(C) * tich P(xi|C)
-    ket_qua = {}
-    chi_tiet = {}  # Luu chi tiet tung buoc de in ra
+    results = {}
+    details = {}  # Luu chi tiet tung buoc de in ra
 
-    for lop in xs_tien_nghiem:
+    for cls in prior_probs:
         # Bat dau voi P(C) - xs tien nghiem
-        tich = xs_tien_nghiem[lop]
-        chi_tiet[lop] = {
-            'P(C)': xs_tien_nghiem[lop],
+        product = prior_probs[cls]
+        details[cls] = {
+            'P(C)': prior_probs[cls],
             'cac_xs': {}
         }
 
         # Nhan voi P(xi|C) cho tung thuoc tinh
-        for ten_thuoc_tinh, gia_tri in mau_moi.items():
-            gia_tri = gia_tri.lower().strip()
-            xs_dk = bang_xs_dieu_kien[ten_thuoc_tinh]
+        for feature_name, value in new_sample.items():
+            value = value.lower().strip()
+            cond_prob_dict = cond_prob_table[feature_name]
 
-            if gia_tri in xs_dk[lop]:
-                xs_xi = xs_dk[lop][gia_tri]
+            if value in cond_prob_dict[cls]:
+                prob_xi = cond_prob_dict[cls][value]
             else:
                 # Laplace Smoothing: (0 + 1) / (tong + so_gia_tri_phan_biet)
-                so_gia_tri = len(xs_dk[lop])
-                xs_xi = 1 / (dem_lop[lop] + so_gia_tri)
+                num_values = len(cond_prob_dict[cls])
+                prob_xi = 1 / (class_counts[cls] + num_values)
 
-            chi_tiet[lop]['cac_xs'][ten_thuoc_tinh] = xs_xi
-            tich *= xs_xi
+            details[cls]['cac_xs'][feature_name] = prob_xi
+            product *= prob_xi
 
-        ket_qua[lop] = tich
+        results[cls] = product
 
     # Buoc 4: Chon lop co xs lon nhat
-    lop_du_doan = max(ket_qua, key=ket_qua.get)
+    predicted_class = max(results, key=results.get)
 
-    return lop_du_doan, ket_qua, chi_tiet, bang_xs_dieu_kien, xs_tien_nghiem
+    return predicted_class, results, details, cond_prob_table, prior_probs
 
 
 # ===========================================================================
@@ -193,66 +193,66 @@ def main():
     print("=" * 70)
 
     # Doc du lieu
-    duong_dan = "golf_df.csv"
-    tieu_de, du_lieu = doc_du_lieu(duong_dan)
+    file_path = "golf_df.csv"
+    header, data = read_data(file_path)
 
     # Xac dinh cot nhan (cot cuoi cung: Play)
-    cot_nhan = len(tieu_de) - 1
-    ten_nhan = tieu_de[cot_nhan]
+    label_col = len(header) - 1
+    label_name = header[label_col]
 
     # --- In bang du lieu ---
     print("\n[BANG DU LIEU]")
     print("-" * 55)
     header_fmt = "{:<6} {:<12} {:<14} {:<10} {:<8} {:<6}"
-    print(header_fmt.format("STT", *tieu_de))
+    print(header_fmt.format("STT", *header))
     print("-" * 55)
-    for i, dong in enumerate(du_lieu, 1):
-        print(header_fmt.format(i, *dong))
+    for i, row in enumerate(data, 1):
+        print(header_fmt.format(i, *row))
     print("-" * 55)
-    print(f"Tong so mau: {len(du_lieu)}")
+    print(f"Tong so mau: {len(data)}")
 
     # --- Buoc 1: Xac suat tien nghiem ---
-    xs_tien_nghiem, dem_lop = tinh_xac_suat_tien_nghiem(du_lieu, cot_nhan)
+    prior_probs, class_counts = calculate_prior_probability(data, label_col)
     print("\n" + "=" * 70)
     print("[BUOC 1] XAC SUAT TIEN NGHIEM P(Play)")
     print("-" * 40)
-    for lop, xs in xs_tien_nghiem.items():
-        print(f"  P(Play={lop:<3}) = {dem_lop[lop]}/{len(du_lieu)} = {xs:.4f}")
+    for cls, prob in prior_probs.items():
+        print(f"  P(Play={cls:<3}) = {class_counts[cls]}/{len(data)} = {prob:.4f}")
 
     # --- Buoc 2: Xac suat co dieu kien ---
     print("\n" + "=" * 70)
     print("[BUOC 2] XAC SUAT CO DIEU KIEN P(Xi | Play)")
     print("-" * 55)
 
-    for i in range(len(tieu_de)):
-        if i == cot_nhan:
+    for i in range(len(header)):
+        if i == label_col:
             continue
-        ten_cot = tieu_de[i]
-        xs_dk = tinh_xac_suat_dieu_kien(du_lieu, i, cot_nhan)
+        col_name = header[i]
+        cond_prob_dict = calculate_conditional_probability(data, i, label_col)
 
-        print(f"\n  Thuoc tinh: {ten_cot}")
+        print(f"\n  Thuoc tinh: {col_name}")
         print(f"  {'':.<4} {'Play=yes':>16} {'Play=no':>16}")
 
         # Thu thap tat ca gia tri cua thuoc tinh nay
-        tat_ca_gia_tri = set()
-        for lop in xs_dk:
-            tat_ca_gia_tri.update(xs_dk[lop].keys())
+        all_values = set()
+        for cls in cond_prob_dict:
+            all_values.update(cond_prob_dict[cls].keys())
 
-        for gia_tri in sorted(tat_ca_gia_tri):
-            xs_yes = xs_dk.get('yes', {}).get(gia_tri, 0)
-            xs_no = xs_dk.get('no', {}).get(gia_tri, 0)
+        for value in sorted(all_values):
+            prob_yes = cond_prob_dict.get('yes', {}).get(value, 0)
+            prob_no = cond_prob_dict.get('no', {}).get(value, 0)
 
             # Tim so dem tuong ung
-            dem_yes = int(xs_yes * dem_lop['yes'])
-            dem_no = int(xs_no * dem_lop['no'])
+            count_yes = int(prob_yes * class_counts['yes'])
+            count_no = int(prob_no * class_counts['no'])
 
-            col_yes = f"{dem_yes}/{dem_lop['yes']} = {xs_yes:.4f}"
-            col_no = f"{dem_no}/{dem_lop['no']} = {xs_no:.4f}"
-            print(f"  {gia_tri:<14} {col_yes:>16} {col_no:>16}")
+            str_yes = f"{count_yes}/{class_counts['yes']} = {prob_yes:.4f}"
+            str_no = f"{count_no}/{class_counts['no']} = {prob_no:.4f}"
+            print(f"  {value:<14} {str_yes:>16} {str_no:>16}")
 
     # --- Buoc 3 & 4: Du doan mau moi ---
     # Mau can du doan (co the thay doi theo yeu cau giao vien)
-    mau_moi = {
+    new_sample = {
         "Outlook": "sunny",
         "Temperature": "cool",
         "Humidity": "high",
@@ -263,49 +263,49 @@ def main():
     print("[BUOC 3] DU DOAN MAU MOI")
     print("-" * 40)
     print("  Mau can phan loai:")
-    for ten, gia_tri in mau_moi.items():
-        print(f"    {ten} = {gia_tri}")
+    for feature_name, value in new_sample.items():
+        print(f"    {feature_name} = {value}")
 
-    lop_du_doan, ket_qua, chi_tiet, _, _ = du_doan(
-        mau_moi, du_lieu, tieu_de, cot_nhan
+    predicted_class, results, details, _, _ = predict_sample(
+        new_sample, data, header, label_col
     )
 
     print("\n  Tinh P(Play|X) cho tung lop:")
     print("-" * 55)
 
-    for lop in ket_qua:
-        print(f"\n  --- Play = {lop} ---")
-        prior = chi_tiet[lop]['P(C)']
-        print(f"  P(Play={lop}) = {prior:.4f}")
+    for cls in results:
+        print(f"\n  --- Play = {cls} ---")
+        prior_prob = details[cls]['P(C)']
+        print(f"  P(Play={cls}) = {prior_prob:.4f}")
 
-        cong_thuc = f"P(Play={lop}|X) = P(Play={lop})"
-        phep_tinh = f"{prior:.4f}"
+        formula_str = f"P(Play={cls}|X) = P(Play={cls})"
+        calc_str = f"{prior_prob:.4f}"
 
-        for ten_tt, xs_val in chi_tiet[lop]['cac_xs'].items():
-            print(f"  P({ten_tt}={mau_moi[ten_tt]} | Play={lop}) = {xs_val:.4f}")
-            cong_thuc += f" x P({ten_tt}|{lop})"
-            phep_tinh += f" x {xs_val:.4f}"
+        for feature_name, prob_val in details[cls]['cac_xs'].items():
+            print(f"  P({feature_name}={new_sample[feature_name]} | Play={cls}) = {prob_val:.4f}")
+            formula_str += f" x P({feature_name}|{cls})"
+            calc_str += f" x {prob_val:.4f}"
 
-        print(f"\n  {cong_thuc}")
-        print(f"  = {phep_tinh}")
-        print(f"  = {ket_qua[lop]:.6f}")
+        print(f"\n  {formula_str}")
+        print(f"  = {calc_str}")
+        print(f"  = {results[cls]:.6f}")
 
     # --- Ket luan ---
     print("\n" + "=" * 70)
     print("[BUOC 4] KET LUAN")
     print("-" * 40)
-    for lop, xs in ket_qua.items():
-        dau = " (*)" if lop == lop_du_doan else ""
-        print(f"  P(Play={lop:<3} | X) = {xs:.6f}{dau}")
+    for cls, prob in results.items():
+        marker = " (*)" if cls == predicted_class else ""
+        print(f"  P(Play={cls:<3} | X) = {prob:.6f}{marker}")
 
     # Chuan hoa xac suat de hien thi phan tram
-    tong_xs = sum(ket_qua.values())
-    print(f"\n  Chuan hoa xac suat (chia cho tong = {tong_xs:.6f}):")
-    for lop, xs in ket_qua.items():
-        phan_tram = (xs / tong_xs) * 100
-        print(f"  P(Play={lop:<3} | X) = {phan_tram:.2f}%")
+    total_prob = sum(results.values())
+    print(f"\n  Chuan hoa xac suat (chia cho tong = {total_prob:.6f}):")
+    for cls, prob in results.items():
+        percentage = (prob / total_prob) * 100
+        print(f"  P(Play={cls:<3} | X) = {percentage:.2f}%")
 
-    print(f"\n  => KET QUA: Play = {lop_du_doan.upper()}")
+    print(f"\n  => KET QUA: Play = {predicted_class.upper()}")
     print(f"     (Chon lop co xac suat hau nghiem lon nhat)")
     print("=" * 70)
 
