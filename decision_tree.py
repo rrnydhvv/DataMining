@@ -36,7 +36,7 @@ def calculate_entropy(data: List[List[str]], label_col: int) -> float:
     #khởi tại biến đểm số lượng từng lớp
     class_counts: Dict[str, int] = {}
     for row in data:
-        #lấy nhãn của mẫu
+        #lấy nhãn của mẫu (yes/no)
         label = row[label_col]
         class_counts[label] = class_counts.get(label, 0) + 1
 
@@ -64,7 +64,9 @@ def calculate_information_gain(data: List[List[str]], feature_col: int, label_co
     #tạo dict chứa các tập con
     subsets: Dict[str, List[List[str]]] = {}
     for row in data:
+        #gom các dòng dữ liệu theo giá trị của thuộc tính feature_col 
         value = row[feature_col]
+        #nếu giá trị chưa có trong dict, khởi tạo danh sách rỗng
         if value not in subsets:
             subsets[value] = []
         subsets[value].append(row)
@@ -77,8 +79,8 @@ def calculate_information_gain(data: List[List[str]], feature_col: int, label_co
         subset_entropy += weight * entropy_val
 
         #khởi tạo bộ đếm lớp
-        counts: Dict[str, int] = {}
-        for row in subset: #đếm số lượng từng nhãn
+        counts: Dict[str, int] = {} 
+        for row in subset: #đếm số lượng từng nhãn, ví dụ sunny có bao nhiêu yes, bao nhiêu no
             n = row[label_col]
             counts[n] = counts.get(n, 0) + 1
         subset_details[value] = {
@@ -122,7 +124,7 @@ def build_tree(data: List[List[str]], header: List[str], remaining_cols: List[in
 
     feature_name = header[best_col]
     subsets: Dict[str, List[List[str]]] = {} #tạo dict chứa các tập con sau khi chia theo cột tốt nhất
-    for row in data:
+    for row in data: #chia dữ liệu thành các nhóm theo thuộc tính được chọn
         value = row[best_col]
         if value not in subsets:
             subsets[value] = []
