@@ -31,7 +31,7 @@ def calculate_prior_probability(data: List[List[str]], label_col: int) -> Tuple[
     class_counts: Dict[str, int] = {}
 
     for row in data:
-        label = row[label_col]
+        label = row[label_col]#lấy giá trị của label trong 1 hàng
         class_counts[label] = class_counts.get(label, 0) + 1
 
     prior_probs: Dict[str, float] = {}
@@ -46,24 +46,24 @@ def calculate_prior_probability(data: List[List[str]], label_col: int) -> Tuple[
 # ---------------------------------------------------------------------------
 def calculate_conditional_probability(data: List[List[str]], feature_col: int, label_col: int) -> Dict[str, Dict[str, float]]:
     """Tính xác suất có điều kiện P(xi|C) kèm Laplace smoothing cơ bản nếu cần (sẽ xử lý kỹ khi dự đoán)."""
-    counts: Dict[str, Dict[str, int]] = {}
-    class_counts: Dict[str, int] = {}
+    counts: Dict[str, Dict[str, int]] = {} #đếm lớp nào có bao nhiêu thuộc tính
+    class_counts: Dict[str, int] = {} #đếm số mẫu mối lớp
 
     for row in data:
-        label = row[label_col]
-        value = row[feature_col]
+        label = row[label_col] #lấy giá trị label (yes/no)
+        value = row[feature_col] #lấy giá trị thuộc tính (sunny, overcast, rainy)
 
         if label not in counts:
             counts[label] = {}
             class_counts[label] = 0
 
-        class_counts[label] += 1
-        counts[label][value] = counts[label].get(value, 0) + 1
+        class_counts[label] += 1 #tăng số lượng mẫu của lớp
+        counts[label][value] = counts[label].get(value, 0) + 1 #đếm số lần xuất hiện của giá trị thuộc tính trong lớp
 
     cond_probs: Dict[str, Dict[str, float]] = {}
-    for cls in counts:
+    for cls in counts: #duyệt qua từng lớp (yes/no)
         cond_probs[cls] = {}
-        for value in counts[cls]:
+        for value in counts[cls]: #duyệt qua từng giá trị thuộc tính (sunny, overcast, rainy)
             cond_probs[cls][value] = counts[cls][value] / class_counts[cls]
 
     return cond_probs
@@ -74,13 +74,14 @@ def calculate_conditional_probability(data: List[List[str]], feature_col: int, l
 # ---------------------------------------------------------------------------
 def predict_sample(new_sample: Dict[str, str], data: List[List[str]], header: List[str], label_col: int) -> Tuple[str, Dict[str, float], Dict[str, Any], Dict[str, Dict[str, Dict[str, float]]], Dict[str, float]]:
     """Dự đoán lớp bằng Naive Bayes với Laplace Smoothing."""
-    prior_probs, class_counts = calculate_prior_probability(data, label_col)
+    prior_probs, class_counts = calculate_prior_probability(data, label_col) #tính xác suất tiên nghiệm 
 
     cond_prob_table: Dict[str, Dict[str, Dict[str, float]]] = {}
-    for i in range(len(header)):
-        if i == label_col:
+    for i in range(len(header)): #duyệt tất cả các cột trong header
+        if i == label_col: #bỏ qua cột label
             continue
         col_name = header[i]
+        #tính xác suất có điều kiện P(xi|C) cho từng cột
         cond_prob_table[col_name] = calculate_conditional_probability(data, i, label_col)
 
     results: Dict[str, float] = {}
@@ -93,13 +94,13 @@ def predict_sample(new_sample: Dict[str, str], data: List[List[str]], header: Li
             'cac_xs': {}
         }
 
-        for feature_name, value in new_sample.items():
+        for feature_name, value in new_sample.items(): #duyệt từng thuộc tính trong mẫu mới
             value = value.lower().strip()
             cond_prob_dict = cond_prob_table[feature_name]
 
-            if value in cond_prob_dict[cls]:
+            if value in cond_prob_dict[cls]: #kiểm tra giá trị đã xuất hiện chưa
                 prob_xi: float = cond_prob_dict[cls][value]
-            else:
+            else: #nếu chưa xuất hiện, áp dụng Laplace smoothing, dùng 1 xác suất nhỏ để tránh xác suất bằng 0
                 num_values: int = len(cond_prob_dict[cls])
                 prob_xi = 1 / (class_counts[cls] + num_values)
 

@@ -126,14 +126,16 @@ def update_centroids(numeric_data: List[List[float]], cluster_assignments: List[
 
 def has_converged(old_centroids: List[List[float]], new_centroids: List[List[float]], threshold: float = 0.0001) -> bool:
     """Kiểm tra xem thuật toán đã hội tụ chưa."""
-    total_shift: float = 0.0
+    total_shift: float = 0.0 #tọa độ dịch chuyển tổng của tất cả các tâm cụm
     for i in range(len(old_centroids)):
+        #tính khoảng cách dịch chuyển của tâm cụm i từ old_centroids[i] đến new_centroids[i]
         total_shift += euclidean_distance(old_centroids[i], new_centroids[i])
     return total_shift < threshold
 
 
 def kmeans_algorithm(numeric_data: List[List[float]], k: int, max_iterations: int = 20) -> Tuple[List[int], List[List[float]], List[Dict[str, Any]]]:
     """Chạy thuật toán K-Means."""
+    #lây số chiều của dữ liệu
     num_dims = len(numeric_data[0])
     history: List[Dict[str, Any]] = []
 
